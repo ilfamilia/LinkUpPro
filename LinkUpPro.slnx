@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/Source/" />
+  <Folder Name="/Source/Core/">
+    <Project Path="LinkUpPro.Core.Application/LinkUpPro.Core.Application.csproj" />
+    <Project Path="LinkUpPro.Core.Domain/LinkUpPro.Core.Domain.csproj" />
+  </Folder>
+  <Folder Name="/Source/Infrastructure/">
+    <Project Path="LinkUpPro.Infrastructure.Persistence/LinkUpPro.Infrastructure.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/Source/Presentation/" />
+  <Folder Name="/Source/Presentation/WebApp/">
+    <Project Path="LinkUpPro/LinkUpPro.csproj" />
+  </Folder>
+</Solution>
