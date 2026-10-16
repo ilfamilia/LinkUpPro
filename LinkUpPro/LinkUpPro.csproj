@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\LinkUpPro.Core.Application\LinkUpPro.Core.Application.csproj" />
     <ProjectReference Include="..\LinkUpPro.Core.Domain\LinkUpPro.Core.Domain.csproj" />
+    <ProjectReference Include="..\LinkUpPro.Infrastructure.Identity\LinkUpPro.Infrastructure.Identity.csproj" />
     <ProjectReference Include="..\LinkUpPro.Infrastructure.Persistence\LinkUpPro.Infrastructure.Persistence.csproj" />
   </ItemGroup>
 

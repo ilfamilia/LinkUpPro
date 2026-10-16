@@ -18,9 +18,17 @@ namespace LinkUpPro.Infrastructure.Persistence
             {
                 var connectionString = config.GetConnectionString("DefaultConnection");
 
-                services.AddDbContext<LinkUpProAppContext>(opt => opt.UseSqlServer(connectionString,
-                    m => m.MigrationsAssembly(typeof(LinkUpProAppContext).Assembly.FullName)),
-                    ServiceLifetime.Scoped);
+                services.AddDbContext<LinkUpProAppContext>(
+
+                    (serviceProvider, opt) =>
+                    {
+                        opt.EnableSensitiveDataLogging();
+                        opt.UseSqlServer(connectionString,
+                        m => m.MigrationsAssembly(typeof(LinkUpProAppContext).Assembly.FullName));
+                    },
+                    contextLifetime: ServiceLifetime.Scoped,
+                    optionsLifetime: ServiceLifetime.Scoped
+                );
             }
             #endregion
 

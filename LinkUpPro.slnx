@@ -5,6 +5,7 @@
     <Project Path="LinkUpPro.Core.Domain/LinkUpPro.Core.Domain.csproj" />
   </Folder>
   <Folder Name="/Source/Infrastructure/">
+    <Project Path="LinkUpPro.Infrastructure.Identity/LinkUpPro.Infrastructure.Identity.csproj" Id="aa8ba664-8baf-4c4a-bffe-5563346f6f31" />
     <Project Path="LinkUpPro.Infrastructure.Persistence/LinkUpPro.Infrastructure.Persistence.csproj" />
   </Folder>
   <Folder Name="/Source/Presentation/" />
