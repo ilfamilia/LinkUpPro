@@ -17,4 +17,9 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.13" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LinkUpPro.Core.Application\LinkUpPro.Core.Application.csproj" />
+    <ProjectReference Include="..\LinkUpPro.Core.Domain\LinkUpPro.Core.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
