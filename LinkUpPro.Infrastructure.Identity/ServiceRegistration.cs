@@ -127,12 +127,15 @@ namespace LinkUpPro.Infrastructure.Identity
                 var connectionString = config.GetConnectionString("DefaultConnection");
 
                 services.AddDbContext<IdentityContext>(
-                    
+
                     (serviceProvider, opt) =>
                     {
                         opt.EnableSensitiveDataLogging();
-                        opt.UseSqlServer(connectionString,
-                        m => m.MigrationsAssembly(typeof(IdentityContext).Assembly.FullName));
+                        opt.UseSqlServer(connectionString, sql =>
+                        {
+                            sql.MigrationsAssembly(typeof(IdentityContext).Assembly.FullName);
+                            sql.MigrationsHistoryTable("__EFMigrationsHistoryIdentity", "dbo");
+                        });
                     },
                     contextLifetime: ServiceLifetime.Scoped,
                     optionsLifetime: ServiceLifetime.Scoped  

@@ -23,8 +23,11 @@ namespace LinkUpPro.Infrastructure.Persistence
                     (serviceProvider, opt) =>
                     {
                         opt.EnableSensitiveDataLogging();
-                        opt.UseSqlServer(connectionString,
-                        m => m.MigrationsAssembly(typeof(LinkUpProAppContext).Assembly.FullName));
+                        opt.UseSqlServer(connectionString, sql =>
+                        {
+                            sql.MigrationsAssembly(typeof(LinkUpProAppContext).Assembly.FullName);
+                            sql.MigrationsHistoryTable("__EFMigrationsHistoryPersistence", "dbo");
+                        });
                     },
                     contextLifetime: ServiceLifetime.Scoped,
                     optionsLifetime: ServiceLifetime.Scoped

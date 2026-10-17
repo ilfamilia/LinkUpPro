@@ -1,4 +1,5 @@
 ﻿using LinkUpPro.Core.Domain.Entities;
+using LinkUpPro.Core.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -50,7 +51,7 @@ namespace LinkUpPro.Infrastructure.Persistence.EntityConfigurations
             builder.Property(fr => fr.ReceiverUserId).IsRequired().HasMaxLength(36);
             builder.Property(fr => fr.RequestedAt).IsRequired();
             builder.Property(fr => fr.IsVisibleToSender).IsRequired().HasDefaultValue(true);
-            builder.Property(fr => fr.Status).IsRequired().HasConversion<string>().HasMaxLength(20);
+            builder.Property(fr => fr.Status).IsRequired().HasConversion<string>().HasMaxLength(20).HasDefaultValue(FriendshipRequestStatus.Pending);
             #endregion
 
             #region Indexes Configuration
