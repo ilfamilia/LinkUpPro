@@ -1,3 +1,4 @@
+using LinkUpPro.Core.Application;
 using LinkUpPro.Infrastructure.Identity;
 using LinkUpPro.Infrastructure.Persistence;
 
@@ -8,6 +9,7 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.AddPersistenceLayerIoc(builder.Configuration);
 builder.Services.AddIdentityLayerIocForWebApp(builder.Configuration);
+builder.Services.AddApplicationLayerIoc();
 
 var app = builder.Build();
 
