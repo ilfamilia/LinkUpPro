@@ -1,4 +1,7 @@
-﻿using LinkUpPro.Infrastructure.Persistence.Contexts;
+﻿using LinkUpPro.Core.Domain.Interfaces;
+using LinkUpPro.Infrastructure.Persistence.Contexts;
+using LinkUpPro.Infrastructure.Persistence.Repositories;
+using LinkUpPro.Infrastructure.Persistence.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,7 +39,14 @@ namespace LinkUpPro.Infrastructure.Persistence
             #endregion
 
             #region Repositories IOC
-            
+            services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            services.AddScoped<ITransactionManager, TransactionManager>();
+            services.AddScoped<IPostRepository, PostRepository>();
+            services.AddScoped<ICommentRepository, CommentRepository>();
+            services.AddScoped<IReactionRepository, ReactionRepository>();
+            services.AddScoped<IFriendshipRepository, FriendshipRepository>();
+            services.AddScoped<IFriendshipRequestRepository, FriendshipRequestRepository>();
+            services.AddScoped<INotificationRepository, NotificationRepository>();
             #endregion
         }
     }
