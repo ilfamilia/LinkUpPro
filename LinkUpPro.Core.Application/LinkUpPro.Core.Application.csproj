@@ -7,12 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Dtos\" />
     <Folder Include="Enums\" />
     <Folder Include="Helpers\" />
     <Folder Include="Mappings\EntitiesAndDtos\" />
     <Folder Include="Mappings\DtosAndViewModels\" />
-    <Folder Include="ViewModels\" />
   </ItemGroup>
 
   <ItemGroup>
