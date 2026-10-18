@@ -15,13 +15,15 @@ namespace InvestmentApp.Core.Application.ViewModels.User
         [DataType(DataType.Text)]
         public required string LastName { get; set; }
 
-        [Required(ErrorMessage = "You must enter the email of user")]
-        [DataType(DataType.EmailAddress)]
-        public required string Email { get; set; }
-
-        [Required(ErrorMessage = "You must enter the username of user")]
+        [Required(ErrorMessage = "You must enter the phone of user")]
         [DataType(DataType.Text)]
-        public required string UserName { get; set; }
+        public required string Phone { get; set; }
+
+        [Required(ErrorMessage = "You must upload a profile image")]
+        [DataType(DataType.Upload)]
+        public IFormFile? ProfileImageFile { get; set; }
+
+        public required string CurrentPassword { get; set; }
 
         [DataType(DataType.Password)]
         public string? Password { get; set; }
@@ -30,13 +32,7 @@ namespace InvestmentApp.Core.Application.ViewModels.User
         [DataType(DataType.Password)]
         public string? ConfirmPassword { get; set; }
 
-        [DataType(DataType.Text)]
-        public string? Phone { get; set; }
 
-        [DataType(DataType.Upload)]
-        public IFormFile? ProfileImageFile { get; set; }
 
-        [Required(ErrorMessage = "You must enter the valid role of user")]
-        public required string Role { get; set; }
     }
 }

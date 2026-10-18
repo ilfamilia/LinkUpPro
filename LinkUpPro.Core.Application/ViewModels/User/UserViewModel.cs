@@ -9,6 +9,5 @@ namespace InvestmentApp.Core.Application.ViewModels.User
         public required string UserName { get; set; }
         public string? Phone { get; set; }
         public string? ProfileImage { get; set; }
-        public required string Role { get; set; }
     }
 }

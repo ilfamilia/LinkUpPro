@@ -4,6 +4,6 @@ namespace LinkUpPro.Core.Application.Interfaces
 {
     public interface IEmailService
     {
-        Task SendAsync(EmailRequestDto emailRequestDto);
+        Task SendEmailAsync(EmailRequestDto emailRequestDto);
     }
 }
