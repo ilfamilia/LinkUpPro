@@ -1,18 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
   <ItemGroup>
     <Folder Include="Enums\" />
     <Folder Include="Helpers\" />
     <Folder Include="Mappings\EntitiesAndDtos\" />
     <Folder Include="Mappings\DtosAndViewModels\" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="16.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.13" />
@@ -22,9 +19,7 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.13" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\LinkUpPro.Core.Domain\LinkUpPro.Core.Domain.csproj" />
   </ItemGroup>
-
 </Project>
