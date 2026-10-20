@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 
-namespace InvestmentApp.Core.Application.ViewModels.User
+namespace LinkUpPro.Core.Application.ViewModels.User
 {
-    public class RegisterUserViewModel
+    public class RegisterUserViewModel //a
     {
         [Required(ErrorMessage = "You must enter the name of user")]
         [DataType(DataType.Text)]
@@ -23,7 +23,7 @@ namespace InvestmentApp.Core.Application.ViewModels.User
 
         [Required(ErrorMessage = "You must enter the profile image of user")]
         [DataType(DataType.Upload)]
-        public required IFormFile ProfileImageFile { get; set; }
+        public required IFormFile? ProfileImageFile { get; set; }
 
         [Required(ErrorMessage = "You must enter the username of user")]
         [DataType(DataType.Text)]

@@ -14,7 +14,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
         private readonly UserManager<AppUser> _userManager;
         private readonly SignInManager<AppUser> _signInManager;
         private readonly IEmailService _emailService;
-
+        //a
         public AccountServiceForWebApp(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IEmailService emailService)
         {
             _userManager = userManager;
@@ -83,7 +83,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             await _signInManager.SignOutAsync();
         }
 
-        public async Task<RegisterResponseDto> RegisterUser(SaveUserDto saveDto, string origin)
+        public async Task<RegisterResponseDto> RegisterUserAsync(RegisterUserDto saveDto, string origin)
         {
             RegisterResponseDto RegisterRes = new(){
                 Email = "",
@@ -126,7 +126,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
 
             if (result.Succeeded)
             {
-                string verificationUri = await GetVerificationEmailUri(user, origin);
+                string verificationUri = await GetVerificationEmailUriAsync(user, origin);
                 await _emailService.SendEmailAsync(new EmailRequestDto()
                 {
                     To = user.Email,
@@ -171,9 +171,9 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             }
         }
 
-        public async Task<string> ResendEmailActivation(LoginDto loginDto,string origin)
+        public async Task<string> ResendEmailActivationAsync(EmailConfirmationDto request,string origin)
         {
-            var user = await _userManager.FindByNameAsync(loginDto.UserName);
+            var user = await _userManager.FindByNameAsync(request.UserName);
             if (user == null)
             {
                 return $"There is no acccount registered with this user";
@@ -181,10 +181,10 @@ namespace LinkUpPro.Infrastructure.Identity.Services
 
             if (user.EmailConfirmed)
             {
-                return $"This account {loginDto.UserName} is already active, you can login";
+                return $"This account {request.UserName} is already active, you can login";
             }
             
-            string verificationUri = await GetVerificationEmailUri(user, origin);
+            string verificationUri = await GetVerificationEmailUriAsync(user, origin);
             await _emailService.SendEmailAsync(new EmailRequestDto()
             {
                 To = user.Email,
@@ -197,7 +197,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             return "The email confirmation has been resent. Please check your email to activate your account.";
         }
 
-        public async Task<List<UserDto>> GetAllUser(bool? isActive = true)
+        public async Task<List<UserDto>> GetAllUserAsync(bool? isActive = true)
         {
             List<UserDto> ListUsersDto = [];
 
@@ -227,7 +227,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             return ListUsersDto;
         }
 
-        public async Task<UserDto?> GetUserByUserName(string userName)
+        public async Task<UserDto?> GetUserByUserNameAsync(string userName)
         {
             var user = await _userManager.FindByNameAsync(userName);
             if(user == null)
@@ -248,7 +248,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             return userDto;
         }
 
-        public async Task<UserDto?> GetUserById(string Id)
+        public async Task<UserDto?> GetUserByIdAsync(string Id)
         {
             var user = await _userManager.FindByIdAsync(Id);
             if(user == null)
@@ -269,7 +269,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             return userDto;
         }
 
-        public async Task<EditResponseDto> EditUser(EditUserDto EditUserDto, string origin, bool? isCreated = false)
+        public async Task<EditResponseDto> EditUserAsync(EditUserDto EditUserDto, string origin, bool? isCreated = false)
         {
             EditResponseDto Response = new(){
                 Id = "",
@@ -336,7 +336,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             }
         }
 
-        public async Task<UserResponseDto> ForgotPassword(ForgotPasswordRequestDto request)
+        public async Task<UserResponseDto> ForgotPasswordAsync(ForgotPasswordRequestDto request)
         {
             UserResponseDto response = new() { HasError = false, Errors = [] };
 
@@ -349,7 +349,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
                 return response;
             }
 
-            var ResetPasswordUri = await GetResetPasswordUri(user, request.Origin);
+            var ResetPasswordUri = await GetResetPasswordUriAsync(user, request.Origin);
 
             await _emailService.SendEmailAsync(new EmailRequestDto()
             {
@@ -387,7 +387,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             return response;
         }
 
-        private async Task<string> GetVerificationEmailUri(AppUser user, string origin)
+        private async Task<string> GetVerificationEmailUriAsync(AppUser user, string origin)
         {
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             token = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
@@ -398,7 +398,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             return verificationUri;
         }
 
-        private async Task<string> GetResetPasswordUri(AppUser user, string origin)
+        private async Task<string> GetResetPasswordUriAsync(AppUser user, string origin)
         {
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             token = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
@@ -407,5 +407,5 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             var resetUri = QueryHelpers.AddQueryString(completeUrl.ToString(), "token", token);
             return resetUri;
         }
-    }
+    } //a
 }

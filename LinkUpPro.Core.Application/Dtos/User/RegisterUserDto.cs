@@ -1,6 +1,6 @@
 namespace LinkUpPro.Core.Application.Dtos.User
 {
-    public class SaveUserDto
+    public class RegisterUserDto
     {
         public required string Id { get; set; }
         public required string Name { get; set; }
@@ -9,6 +9,6 @@ namespace LinkUpPro.Core.Application.Dtos.User
         public required string UserName { get; set; }
         public required string Password { get; set; }
         public required string Phone { get; set; }
-        public required string ProfileImage { get; set; }
+        public string? ProfileImage { get; set; }
     }
 }

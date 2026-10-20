@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace InvestmentApp.Core.Application.ViewModels.User
+namespace LinkUpPro.Core.Application.ViewModels.User
 {
     public class ForgotPasswordRequestViewModel
     {

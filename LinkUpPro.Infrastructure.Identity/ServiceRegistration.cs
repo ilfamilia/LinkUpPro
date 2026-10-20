@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using LinkUpPro.Core.Application.Interfaces;
+using LinkUpPro.Infrastructure.Identity.Services;
 
 namespace LinkUpPro.Infrastructure.Identity
 {
@@ -111,6 +113,7 @@ namespace LinkUpPro.Infrastructure.Identity
             });
 
             services.AddAuthorization();
+            services.AddScoped<IAccountServiceForWebApp, AccountServiceForWebApp>();
             #endregion
         }
 

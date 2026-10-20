@@ -1,12 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>23e84c74-8c31-4676-80c9-b62deb5ed2ec</UserSecretsId>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.13">
@@ -15,12 +13,10 @@
     </PackageReference>
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\LinkUpPro.Core.Application\LinkUpPro.Core.Application.csproj" />
     <ProjectReference Include="..\LinkUpPro.Core.Domain\LinkUpPro.Core.Domain.csproj" />
     <ProjectReference Include="..\LinkUpPro.Infrastructure.Identity\LinkUpPro.Infrastructure.Identity.csproj" />
     <ProjectReference Include="..\LinkUpPro.Infrastructure.Persistence\LinkUpPro.Infrastructure.Persistence.csproj" />
   </ItemGroup>
-
 </Project>

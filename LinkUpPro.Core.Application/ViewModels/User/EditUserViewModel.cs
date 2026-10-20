@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace InvestmentApp.Core.Application.ViewModels.User
 {
-    public class UpdateUserViewModel
+    public class EditUserViewModel
     {
         public required string Id { get; set; }
 
@@ -31,8 +31,5 @@ namespace InvestmentApp.Core.Application.ViewModels.User
         [Compare(nameof(Password), ErrorMessage = "Password must match")]       
         [DataType(DataType.Password)]
         public string? ConfirmPassword { get; set; }
-
-
-
     }
 }

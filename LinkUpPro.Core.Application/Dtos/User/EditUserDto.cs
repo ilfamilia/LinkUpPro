@@ -10,5 +10,5 @@ namespace LinkUpPro.Core.Application.Dtos.User
         public required string CurrentPassword { get; set; }
         public required string NewPassword { get; set; }
         public required string ConfirmPassword { get; set; }
-    }    
+    }   //a
 }
