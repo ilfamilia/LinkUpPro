@@ -10,6 +10,5 @@ namespace LinkUpPro.Core.Application.Dtos.User
         public string? Phone { get; set; }
         public string? ProfileImage { get; set; }
         public bool? isVerified { get; set; }
-        public required string Role { get; set; }
     }
 }

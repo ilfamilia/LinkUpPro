@@ -43,14 +43,14 @@ namespace LinkUpPro.Infrastructure.Identity.Services
                 return response;
             }
 
-            var result = await _signInManager.PasswordSignInAsync(user.UserName ?? "", loginDto.Password, loginDto.RememberMe, true);
-
             if (!user.EmailConfirmed)
             {
                 response.HasError = true;
                 response.Errors.Add($"This account {loginDto.UserName} is not active, you should check your email");
                 return response;
             }
+
+            var result = await _signInManager.PasswordSignInAsync(user.UserName ?? "", loginDto.Password, loginDto.RememberMe, true);
 
             if (!result.Succeeded)
             {
@@ -78,9 +78,9 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             return response;
         }
 
-        public Task SignOutAsync()
+        public async Task SignOutAsync()
         {
-            return _signInManager.SignOutAsync();
+            await _signInManager.SignOutAsync();
         }
 
         public async Task<RegisterResponseDto> RegisterUser(SaveUserDto saveDto, string origin)
@@ -171,135 +171,220 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             }
         }
 
-        public async Task<EditResponseDto> EditUser(SaveUserDto saveDto, string origin, bool? isCreated = false)
+        public async Task<string> ResendEmailActivation(LoginDto loginDto,string origin)
         {
-            bool isNotcreated = !isCreated ?? false;
-            EditResponseDto response = new()
+            var user = await _userManager.FindByNameAsync(loginDto.UserName);
+            if (user == null)
             {
-                Email = "",
+                return $"There is no acccount registered with this user";
+            }
+
+            if (user.EmailConfirmed)
+            {
+                return $"This account {loginDto.UserName} is already active, you can login";
+            }
+            
+            string verificationUri = await GetVerificationEmailUri(user, origin);
+            await _emailService.SendEmailAsync(new EmailRequestDto()
+            {
+                To = user.Email,
+                Subject = "Confirm your email",
+                HtmlBody = $"Please confirm your account by clicking this link: <a href='{verificationUri}'>link</a>"
+            });
+            
+            user.EmailConfirmed = true;
+            await _userManager.UpdateAsync(user);
+            return "The email confirmation has been resent. Please check your email to activate your account.";
+        }
+
+        public async Task<List<UserDto>> GetAllUser(bool? isActive = true)
+        {
+            List<UserDto> ListUsersDto = [];
+
+            var users = _userManager.Users;
+            
+            if(isActive != null && isActive == true)
+            {
+                users = users.Where(u => u.EmailConfirmed);
+            }
+
+            var listUsers = await users.ToListAsync();
+            
+            foreach (var item in listUsers)
+            {
+                ListUsersDto.Add(new UserDto()
+                {
+                    Id = item.Id,
+                    Name = item.FirstName ?? "",
+                    LastName = item.LastName ?? "",
+                    Email = item.Email ?? "",
+                    UserName = item.UserName ?? "",
+                    Phone = item.PhoneNumber,
+                    ProfileImage = item.ProfilePicturePath,
+                    isVerified = item.EmailConfirmed
+                });
+            }
+            return ListUsersDto;
+        }
+
+        public async Task<UserDto?> GetUserByUserName(string userName)
+        {
+            var user = await _userManager.FindByNameAsync(userName);
+            if(user == null)
+            {
+                return null;
+            }
+            UserDto userDto = new UserDto()
+            {
+                Id = user.Id,
+                Name = user.FirstName ?? "",
+                LastName = user.LastName ?? "",
+                Email = user.Email ?? "",
+                UserName = user.UserName ?? "",
+                Phone = user.PhoneNumber,
+                ProfileImage = user.ProfilePicturePath,
+                isVerified = user.EmailConfirmed
+            };
+            return userDto;
+        }
+
+        public async Task<UserDto?> GetUserById(string Id)
+        {
+            var user = await _userManager.FindByIdAsync(Id);
+            if(user == null)
+            {
+                return null;
+            }
+            UserDto userDto = new UserDto()
+            {
+                Id = user.Id,
+                Name = user.FirstName ?? "",
+                LastName = user.LastName ?? "",
+                Email = user.Email ?? "",
+                UserName = user.UserName ?? "",
+                Phone = user.PhoneNumber,
+                ProfileImage = user.ProfilePicturePath,
+                isVerified = user.EmailConfirmed
+            };
+            return userDto;
+        }
+
+        public async Task<EditResponseDto> EditUser(EditUserDto EditUserDto, string origin, bool? isCreated = false)
+        {
+            EditResponseDto Response = new(){
                 Id = "",
-                LastName = "",
                 Name = "",
-                UserName = "",
+                LastName = "",
+                PhoneNumber = "",
+                ProfileImage = "",
+                CurrentPassword = "",
+                NewPassword = "",
+                ConfirmPassword = "",
                 HasError = false,
                 Errors = []
             };
 
-            var userWithSameUserName = await _userManager.Users.FirstOrDefaultAsync(w => w.UserName == saveDto.UserName && w.Id != saveDto.Id);
-            if (userWithSameUserName != null)
-            {
-                response.HasError = true;
-                response.Errors.Add($"this username: {saveDto.UserName} is already taken.");
-                return response;
-            }
-
-            var userWithSameEmail = await _userManager.Users.FirstOrDefaultAsync(w => w.Email == saveDto.Email && w.Id != saveDto.Id);
-            if (userWithSameEmail != null)
-            {
-                response.HasError = true;
-                response.Errors.Add($"this email: {saveDto.Email} is already taken.");
-                return response;
-            }
-
-            var user = await _userManager.FindByIdAsync(saveDto.Id);
+            var user = await _userManager.FindByIdAsync(EditUserDto.Id);
 
             if (user == null)
             {
-                response.HasError = true;
-                response.Errors.Add($"There is no acccount registered with this user");
-                return response;
+                Response.HasError = true;
+                Response.Errors.Add($"There is no acccount registered with this user");
+                return Response;
             }
 
-            user.FirstName = saveDto.Name;
-            user.LastName = saveDto.LastName;
-            user.UserName = saveDto.UserName;
-            user.ProfilePicturePath = string.IsNullOrWhiteSpace(saveDto.ProfileImage) ? user.ProfilePicturePath : saveDto.ProfileImage;
-            user.EmailConfirmed = user.EmailConfirmed && user.Email == saveDto.Email;
-            user.Email = saveDto.Email;
-            user.PhoneNumber = saveDto.Phone;
+            user.FirstName = EditUserDto.Name;
+            user.LastName = EditUserDto.LastName;
+            user.PhoneNumber = EditUserDto.PhoneNumber;
+            user.ProfilePicturePath = string.IsNullOrWhiteSpace(EditUserDto.ProfileImage) ? user.ProfilePicturePath : EditUserDto.ProfileImage;
 
-            if (!string.IsNullOrWhiteSpace(saveDto.Password) && isNotcreated)
+            if (!string.IsNullOrWhiteSpace(EditUserDto.CurrentPassword))
             {
                 var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-                var resultChange = await _userManager.ResetPasswordAsync(user, token, saveDto.Password);
+                var resultChange = await _userManager.ResetPasswordAsync(user, token, EditUserDto.NewPassword);
 
                 if (resultChange != null && !resultChange.Succeeded)
                 {
-                    response.HasError = true;
-                    response.Errors.AddRange(resultChange.Errors.Select(s => s.Description).ToList());
-                    return response;
+                    Response.HasError = true;
+                    Response.Errors.AddRange(resultChange.Errors.Select(s => s.Description).ToList());
+                    return Response;
                 }
             }
 
             var result = await _userManager.UpdateAsync(user);
             if (result.Succeeded)
             {
-                if (!user.EmailConfirmed && isNotcreated)
+                return new EditResponseDto()
                 {
-                    string verificationUri = await GetVerificationEmailUri(user, origin);
-                    await _emailService.SendEmailAsync(new EmailRequestDto()
-                    {
-                        To = saveDto.Email,
-                        HtmlBody = $"Please confirm yout account visiting this URL {verificationUri}",
-                        Subject = "Confirm registration"
-                    });
-                }             
-
-                var updatedRolesList = await _userManager.GetRolesAsync(user);
-
-                response.Id = user.Id;
-                response.Email = user.Email ?? "";
-                response.UserName = user.UserName ?? "";
-                response.Name = user.FirstName ?? "";
-                response.LastName = user.LastName ?? "";
-                response.IsVerified = user.EmailConfirmed;
-                response.Roles = updatedRolesList.ToList();
-
-                return response;
+                    Id = user.Id,
+                    Name = user.FirstName ?? "",
+                    LastName = user.LastName ?? "",
+                    PhoneNumber = user.PhoneNumber ?? "",
+                    ProfileImage = user.ProfilePicturePath,
+                    CurrentPassword = EditUserDto.CurrentPassword,
+                    NewPassword = EditUserDto.NewPassword,
+                    ConfirmPassword = EditUserDto.ConfirmPassword,
+                    HasError = !result.Succeeded,
+                    Errors = result.Errors.Select(s => s.Description).ToList()
+                };
             }
             else
             {
-                response.HasError = true;
-                response.Errors.AddRange(result.Errors.Select(s => s.Description).ToList());
-                return response;
+                Response.HasError = true;
+                Response.Errors.AddRange(result.Errors.Select(s => s.Description).ToList());
+                return Response;
             }
         }
 
-        public Task<UserResponseDto> DeleteAsync(string id)
+        public async Task<UserResponseDto> ForgotPassword(ForgotPasswordRequestDto request)
         {
-            throw new NotImplementedException();
+            UserResponseDto response = new() { HasError = false, Errors = [] };
+
+            var user = await _userManager.FindByEmailAsync(request.UserName);
+
+            if(user == null)
+            {
+                response.HasError = true;
+                response.Errors.Add($"There is no acccount registered with this email: {request.UserName}");
+                return response;
+            }
+
+            var ResetPasswordUri = await GetResetPasswordUri(user, request.Origin);
+
+            await _emailService.SendEmailAsync(new EmailRequestDto()
+            {
+               To = user.Email,
+               Subject = "Reset Password",
+               HtmlBody = $"Please reset your password by clicking this link: <a href='{ResetPasswordUri}'>link</a>" 
+            });
+            return response;
         }
 
-
-
-        public Task<UserResponseDto> ForgotPasswordAsync(ForgotPasswordRequestDto request)
+        public async Task<UserResponseDto> ResetPasswordAsync(ResetPasswordRequestDto request)
         {
-            throw new NotImplementedException();
-        }
+            UserResponseDto response = new() { HasError = false, Errors = [] };
 
-        public Task<List<UserDto>> GetAllUser(bool? isActive = true)
-        {
-            throw new NotImplementedException();
-        }
+            var user = await _userManager.FindByIdAsync(request.Id);
 
-        public Task<UserDto?> GetUserByEmail(string email)
-        {
-            throw new NotImplementedException();
-        }
+            if(user == null)
+            {
+                response.HasError = true;
+                response.Errors.Add($"There is no acccount registered with this user");
+                return response;
+            }
+            var token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(request.Token));
+            var result = await _userManager.ResetPasswordAsync(user, token, request.Password);
 
-        public Task<UserDto?> GetUserById(string Id)
-        {
-            throw new NotImplementedException();
-        }
+            if (!result.Succeeded)
+            {
+                response.HasError = true;
+                response.Errors.Add($"An error occurred while resetting the password for this user");
+                return response;
+            }
 
-        public Task<UserDto?> GetUserByUserName(string userName)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<UserResponseDto> ResetPasswordAsync(ResetPasswordRequestDto request)
-        {
-            throw new NotImplementedException();
+            user.EmailConfirmed = true;
+            await _userManager.UpdateAsync(user);
+            return response;
         }
 
         private async Task<string> GetVerificationEmailUri(AppUser user, string origin)
@@ -307,10 +392,9 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             token = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
             var route = "Login/ConfirmEmail";
-            var completeUrl = new Uri(string.Concat(origin, "/", route));// origin = https://localhost:58296 route=Login/ConfirmEmail
+            var completeUrl = new Uri(string.Concat(origin, "/", route));
             var verificationUri = QueryHelpers.AddQueryString(completeUrl.ToString(), "userId", user.Id);
             verificationUri = QueryHelpers.AddQueryString(verificationUri.ToString(), "token", token);
-
             return verificationUri;
         }
 
@@ -319,10 +403,8 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             token = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
             var route = "Login/ResetPassword";
-            var completeUrl = new Uri(string.Concat(origin, "/", route));// origin = https://localhost:58296 route=Login/ConfirmEmail
-            var resetUri = QueryHelpers.AddQueryString(completeUrl.ToString(), "userId", user.Id);
-            resetUri = QueryHelpers.AddQueryString(resetUri.ToString(), "token", token);
-
+            var completeUrl = new Uri(string.Concat(origin, "/", route));
+            var resetUri = QueryHelpers.AddQueryString(completeUrl.ToString(), "token", token);
             return resetUri;
         }
     }
