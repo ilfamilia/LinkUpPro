@@ -9,6 +9,6 @@ namespace LinkUpPro.Core.Application.Dtos.User
         public required string UserName { get; set; }
         public required string Password { get; set; }
         public required string Phone { get; set; }
-        public string? ProfileImage { get; set; }
+        public required string ProfileImage { get; set; }
     }
 }

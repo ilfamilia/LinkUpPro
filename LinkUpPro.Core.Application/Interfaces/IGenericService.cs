@@ -1,5 +1,4 @@
-﻿
-namespace LinkUpPro.Core.Application.Interfaces
+﻿namespace LinkUpPro.Core.Application.Interfaces
 {
     public interface IGenericService<TReadDto, TCreateDto, TUpdateDto>
         where TReadDto : class

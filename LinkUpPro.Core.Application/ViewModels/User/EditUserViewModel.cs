@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 
-namespace InvestmentApp.Core.Application.ViewModels.User
+namespace LinkUpPro.Core.Application.ViewModels.User
 {
     public class EditUserViewModel
     {

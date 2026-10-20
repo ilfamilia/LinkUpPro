@@ -1,6 +1,7 @@
 using LinkUpPro.Core.Application;
 using LinkUpPro.Infrastructure.Identity;
 using LinkUpPro.Infrastructure.Persistence;
+using LinkUpPro.Infrastructure.Share;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddPersistenceLayerIoc(builder.Configuration);
 builder.Services.AddIdentityLayerIocForWebApp(builder.Configuration);
 builder.Services.AddApplicationLayerIoc();
+builder.Services.AddSharedLayerIoc(builder.Configuration);
 
 var app = builder.Build();
 

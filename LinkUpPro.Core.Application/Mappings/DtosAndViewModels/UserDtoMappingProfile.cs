@@ -19,7 +19,7 @@ namespace LinkUpPro.Core.Application.Mappings.DtosAndViewModels.User
                 .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.UserName))
                 .ForMember(dest => dest.Password, opt => opt.MapFrom(src => src.Password))
                 .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.Phone))
-                .ForMember(dest => dest.ProfileImage, opt => opt.MapFrom(src => src.ProfileImageFile.FileName)); //a
+                .ForMember(dest => dest.ProfileImage, opt => opt.MapFrom(src => src.ProfileImageFile.FileName ?? string.Empty)); //a
 
             CreateMap<EmailConfirmationViewModel, EmailConfirmationDto>()
                 .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.UserName));
