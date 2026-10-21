@@ -78,7 +78,7 @@ namespace LinkUpPro.Controllers
                 UserName = "",
                 Password = "",
                 ConfirmPassword = "",
-                ProfileImageFile = null,
+                ProfileImageFile = null
             });
         }
 
