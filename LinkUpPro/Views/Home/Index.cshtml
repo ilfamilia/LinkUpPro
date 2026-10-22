@@ -11,6 +11,54 @@
     <link rel="stylesheet" href="~/css/Home/Index.css" asp-append-version="true" />
 }
 
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title mb-3">Buscar publicaciones</h5>
+        <form asp-controller="Home" asp-action="Index" method="get">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
+                    <label asp-for="Filter.SearchText" class="form-label">Contenido</label>
+                    <input asp-for="Filter.SearchText" class="form-control" placeholder="Buscar por contenido" />
+                    <span asp-validation-for="Filter.SearchText"
+                          class="text-danger"></span>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label asp-for="Filter.MediaType" class="form-label">Tipo de publicación</label>
+                    <select asp-for="Filter.MediaType" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="@PostMediaType.Image">Imagen</option>
+                        <option value="@PostMediaType.YouTubeVideo">Video de YouTube</option>
+                    </select>
+                    <span asp-validation-for="Filter.MediaType" class="text-danger"></span>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label asp-for="Filter.IsEdited" class="form-label">Estado de edición</label>
+                    <select asp-for="Filter.IsEdited" class="form-select">
+                        <option value="">Todas</option>
+                        <option value="true">Editadas</option>
+                        <option value="false">No editadas</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label asp-for="Filter.StartDate" class="form-label">Fecha inicial</label>
+                    <input asp-for="Filter.StartDate" type="date" class="form-control" />
+                    <span asp-validation-for="Filter.StartDate" class="text-danger"></span>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label asp-for="Filter.EndDate" class="form-label">Fecha final</label>
+                    <input asp-for="Filter.EndDate" type="date" class="form-control" />
+                    <span asp-validation-for="Filter.EndDate" class="text-danger"></span>
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Buscar</button>
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Limpiar filtros</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="container mt-4">
     <h2 class="mb-4">Mis publicaciones</h2>
 

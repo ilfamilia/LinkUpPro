@@ -7,5 +7,7 @@ namespace LinkUpPro.Core.Application.ViewModels.Home
         public CreatePostViewModel CreatePost { get; set; } = new();
 
         public List<PostViewModel> Posts { get; set; } = [];
+
+        public PostFilterViewModel Filter { get; set; } = new();
     }
 }

@@ -31,6 +31,8 @@ namespace LinkUpPro.Core.Application.Mappings.DtosAndViewModels
                     opt => opt.Ignore())
                 .ForMember(dest => dest.ImagePath,
                     opt => opt.Ignore());
+
+            CreateMap<PostFilterViewModel, PostFilterDto>();
         }
     }
 }

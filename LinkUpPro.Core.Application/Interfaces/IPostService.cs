@@ -11,7 +11,7 @@ namespace LinkUpPro.Core.Application.Interfaces
 
         Task<ServiceResult> DeleteAsync(int postId, string userId);
 
-        Task<ServiceResultWithData<List<PostDto>>> GetMyPostsAsync(string userId);
+        Task<ServiceResultWithData<List<PostDto>>> GetMyPostsAsync(string userId, PostFilterDto? filter = null);
 
         Task<ServiceResultWithData<List<PostDto>>> GetFeedAsync(string userId);
 

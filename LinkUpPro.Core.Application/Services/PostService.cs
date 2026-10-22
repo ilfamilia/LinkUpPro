@@ -248,7 +248,6 @@ namespace LinkUpPro.Core.Application.Services
             });
         }
 
-
         public async Task<ServiceResultWithData<PostDto>> GetVisiblePostByIdAsync(int postId, string userId)
         {
             return await ExecuteAsync<PostDto>(async () => 
@@ -300,9 +299,10 @@ namespace LinkUpPro.Core.Application.Services
             });
         }
 
-        public async Task<ServiceResultWithData<List<PostDto>>> GetMyPostsAsync(string userId)
+
+        public async Task<ServiceResultWithData<List<PostDto>>> GetMyPostsAsync(string userId, PostFilterDto? filter = null)
         {
-            return await ExecuteAsync<List<PostDto>>(async () => 
+            return await ExecuteAsync<List<PostDto>>(async () =>
             {
                 if (string.IsNullOrWhiteSpace(userId))
                 {
@@ -310,11 +310,49 @@ namespace LinkUpPro.Core.Application.Services
                         "El usuario no está autenticado");
                 }
 
-                List<Post> posts = await _postRepository.GetAllQuery()
+                IQueryable<Post> query = _postRepository.GetAllQuery()
                     .AsNoTracking()
-                    .Where(p => p.UserId == userId && !p.IsDeleted)
-                    .OrderByDescending(p => p.CreatedAt)
-                    .ToListAsync();
+                    .Where(p => p.UserId == userId && !p.IsDeleted);
+
+                if (filter != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(filter.SearchText))
+                    {
+                        string searchText = filter.SearchText.Trim();
+
+                        query = query.Where(p => p.Content.Contains(searchText));
+                    }
+
+                    if (filter.MediaType.HasValue)
+                    {
+                        query = query.Where(p => p.MediaType == filter.MediaType.Value);
+                    }
+
+                    if (filter.StartDate.HasValue)
+                    {
+                        DateTime startDate = filter.StartDate.Value
+                            .ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+
+                        query = query.Where(p => p.CreatedAt >= startDate);
+                    }
+
+                    if (filter.EndDate.HasValue)
+                    {
+                        DateTime endDate = filter.EndDate.Value
+                            .ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+                        query = query.Where(p => p.CreatedAt <= endDate);
+                    }
+
+                    if (filter.IsEdited.HasValue)
+                    {
+                        bool isEdited = filter.IsEdited.Value;
+
+                        query = query.Where(p => (p.UpdatedAt != null) == isEdited);
+                    }
+                }
+
+                List<Post> posts = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
 
                 List<PostDto> postDtos = _mapper.Map<List<PostDto>>(posts);
 
@@ -325,7 +363,8 @@ namespace LinkUpPro.Core.Application.Services
                 return ServiceResultWithData<List<PostDto>>.Success(postDtos);
             });
         }
-        
+
+
         public async Task<ServiceResultWithData<List<PostDto>>> GetFeedAsync(string userId)
         {
             return await ExecuteAsync<List<PostDto>>(async () => 

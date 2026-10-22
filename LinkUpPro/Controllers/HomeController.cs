@@ -1,4 +1,5 @@
 using AutoMapper;
+using LinkUpPro.Core.Application.Dtos.Post;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.ViewModels.Home;
 using LinkUpPro.Core.Application.ViewModels.Post;
@@ -23,7 +24,7 @@ namespace LinkUpPro.Controllers
             _userManager = userManager;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index([FromQuery] PostFilterViewModel filter)
         {
             AppUser? user = await _userManager.GetUserAsync(User);
 
@@ -37,7 +38,16 @@ namespace LinkUpPro.Controllers
                 return Forbid();
             }
 
-            var result = await _postService.GetMyPostsAsync(user.Id);
+            if (filter.StartDate.HasValue && filter.EndDate.HasValue &&
+                filter.StartDate.Value > filter.EndDate.Value)
+            {
+                ModelState.AddModelError("Filter.EndDate",
+                    "La fecha final no puede ser anterior a la fecha inicial");
+            }
+
+            PostFilterDto? filterDto = ModelState.IsValid ? _mapper.Map<PostFilterDto>(filter) : null;
+
+            var result = await _postService.GetMyPostsAsync(user.Id, filterDto);
 
             if (!result.IsSuccess || result.Data == null)
             {
@@ -54,6 +64,7 @@ namespace LinkUpPro.Controllers
 
             HomeViewModel vm = new()
             {
+                Filter = filter,
                 Posts = posts
             };
 
