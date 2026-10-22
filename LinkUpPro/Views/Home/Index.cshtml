@@ -136,19 +136,24 @@
                         <small class="text-muted">Editada</small>
                     }
 
-                    <div class="mt-3">
-                        <span class="me-3">
-                            Me gusta: @post.LikesCount
-                        </span>
-
-                        <span class="me-3">
-                            No me gusta: @post.DislikesCount
-                        </span>
-
-                        <span>
-                            Comentarios: @post.CommentsCount
-                        </span>
+                    
+                    <div class="d-flex gap-2 mb-3">
+                        <form asp-controller="Reaction" asp-action="Toggle" method="post">
+                            <input type="hidden" name="PostId" value="@post.Id" />
+                            <input type="hidden" name="ReactionType" value="@ReactionType.Like" />
+                            <button type="submit" class="btn @(post.CurrentUserReaction == ReactionType.Like ? "btn-primary" : "btn-outline-primary")">
+                                Me gusta (@post.LikesCount)
+                            </button>
+                        </form>
+                        <form asp-controller="Reaction" asp-action="Toggle" method="post">
+                            <input type="hidden" name="PostId" value="@post.Id" />
+                            <input type="hidden" name="ReactionType" value="@ReactionType.Dislike" />
+                            <button type="submit" class="btn @(post.CurrentUserReaction == ReactionType.Dislike ? "btn-danger" : "btn-outline-danger")">
+                                No me gusta (@post.DislikesCount)
+                            </button>
+                        </form>
                     </div>
+
                     <div class="mt-3">
                         <a asp-controller="Post" asp-action="Edit" asp-route-postId="@post.Id" class="btn btn-warning">Editar</a>
                         <a asp-controller="Post" asp-action="Delete" asp-route-postId="@post.Id" class="btn btn-danger">Eliminar</a>

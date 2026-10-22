@@ -16,16 +16,19 @@ namespace LinkUpPro.Core.Application.Services
         private readonly IFriendshipRepository _friendshipRepository;
         private readonly IReactionRepository _reactionRepository;
         private readonly ICommentRepository _commentRepository;
+        private readonly IUserAccountStatusService _userAccountStatusService;
         private readonly IMapper _mapper;
 
         public PostService(IPostRepository postRepository, IMapper mapper, IFriendshipRepository friendshipRepository, 
-            IReactionRepository reactionRepository, ICommentRepository commentRepository)
+            IReactionRepository reactionRepository, ICommentRepository commentRepository,
+            IUserAccountStatusService userAccountStatusService)
         {
             _postRepository = postRepository;
             _friendshipRepository = friendshipRepository;
             _reactionRepository = reactionRepository;
             _commentRepository = commentRepository;
             _mapper = mapper;
+            _userAccountStatusService = userAccountStatusService;
         }
 
         public async Task<ServiceResult> AddAsync(CreatePostDto dto)
@@ -287,6 +290,14 @@ namespace LinkUpPro.Core.Application.Services
                         "La publicación no pudo ser encontrada");
                 }
 
+                bool isAuthorActive = await _userAccountStatusService.IsUserActiveAsync(post.UserId);
+
+                if (!isAuthorActive)
+                {
+                    return ServiceResultWithData<PostDto>.Failure(OperationStatus.NotFound,
+                        "La publicación no está disponible");
+                }
+
                 PostDto postDto = _mapper.Map<PostDto>(post);
 
                 List<PostDto> postDtos = [postDto];
@@ -298,7 +309,6 @@ namespace LinkUpPro.Core.Application.Services
                 return ServiceResultWithData<PostDto>.Success(postDto);
             });
         }
-
 
         public async Task<ServiceResultWithData<List<PostDto>>> GetMyPostsAsync(string userId, PostFilterDto? filter = null)
         {
@@ -364,10 +374,9 @@ namespace LinkUpPro.Core.Application.Services
             });
         }
 
-
-        public async Task<ServiceResultWithData<List<PostDto>>> GetFeedAsync(string userId)
+        public async Task<ServiceResultWithData<List<PostDto>>> GetFriendsPostsAsync(string userId)
         {
-            return await ExecuteAsync<List<PostDto>>(async () => 
+            return await ExecuteAsync<List<PostDto>>(async () =>
             {
                 if (string.IsNullOrWhiteSpace(userId))
                 {
@@ -381,18 +390,20 @@ namespace LinkUpPro.Core.Application.Services
 
                 List<Post> posts = await _postRepository.GetAllQuery()
                     .AsNoTracking()
-                    .Where(p => !p.IsDeleted &&
-                        (
-                            p.UserId == userId ||
-                            (
-                                p.Privacy == PostPrivacy.FriendsOnly &&
-                                friendshipsQuery.Any(f =>
-                                    (f.User1Id == userId && f.User2Id == p.UserId) ||
-                                    (f.User2Id == userId && f.User1Id == p.UserId))
-                            )
-                        ))
+                    .Where(p => !p.IsDeleted && p.UserId != userId &&
+                        p.Privacy == PostPrivacy.FriendsOnly &&
+                        friendshipsQuery.Any(f =>
+                            (f.User1Id == userId && f.User2Id == p.UserId) ||
+                            (f.User2Id == userId && f.User1Id == p.UserId)))
                     .OrderByDescending(p => p.CreatedAt)
                     .ToListAsync();
+
+                HashSet<string> activeUserIds = await _userAccountStatusService
+                    .GetActiveUserIdsAsync(posts.Select(p => p.UserId));
+
+                posts = posts
+                    .Where(p => activeUserIds.Contains(p.UserId))
+                    .ToList();
 
                 List<PostDto> postDtos = _mapper.Map<List<PostDto>>(posts);
 

@@ -115,9 +115,10 @@ namespace LinkUpPro.Infrastructure.Identity
             services.AddAuthorization();
             #endregion
 
-            #region Current User Context IOC
+            #region Services IOC
             services.AddHttpContextAccessor();
             services.AddScoped<ICurrentUserContext, CurrentUserContext>();
+            services.AddScoped<IUserAccountStatusService, UserAccountStatusService>();
             #endregion
         }
 
