@@ -82,7 +82,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
         {
             await _signInManager.SignOutAsync();
         }
-
+        
         public async Task<RegisterResponseDto> RegisterUserAsync(RegisterUserDto saveDto, string origin)
         {
             RegisterResponseDto RegisterRes = new(){
@@ -119,7 +119,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
                 UserName = saveDto.UserName,
                 EmailConfirmed = false,
                 CreatedAt = DateTime.UtcNow,
-                ProfilePicturePath = saveDto.ProfileImage
+                ProfilePicturePath = saveDto.ProfileImage ?? ""
             };
 
             var result = await _userManager.CreateAsync(user, saveDto.Password);
@@ -271,15 +271,14 @@ namespace LinkUpPro.Infrastructure.Identity.Services
 
         public async Task<EditResponseDto> EditUserAsync(EditUserDto EditUserDto, string origin, bool? isCreated = false)
         {
-            EditResponseDto Response = new(){
+            EditResponseDto Response = new(){ //a
                 Id = "",
                 Name = "",
                 LastName = "",
-                PhoneNumber = "",
+                Phone = "",
                 ProfileImage = "",
                 CurrentPassword = "",
                 NewPassword = "",
-                ConfirmPassword = "",
                 HasError = false,
                 Errors = []
             };
@@ -295,13 +294,13 @@ namespace LinkUpPro.Infrastructure.Identity.Services
 
             user.FirstName = EditUserDto.Name;
             user.LastName = EditUserDto.LastName;
-            user.PhoneNumber = EditUserDto.PhoneNumber;
+            user.PhoneNumber = EditUserDto.Phone;
             user.ProfilePicturePath = string.IsNullOrWhiteSpace(EditUserDto.ProfileImage) ? user.ProfilePicturePath : EditUserDto.ProfileImage;
 
             if (!string.IsNullOrWhiteSpace(EditUserDto.CurrentPassword))
             {
                 var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-                var resultChange = await _userManager.ResetPasswordAsync(user, token, EditUserDto.NewPassword);
+                var resultChange = await _userManager.ResetPasswordAsync(user, token, EditUserDto.NewPassword ?? "");
 
                 if (resultChange != null && !resultChange.Succeeded)
                 {
@@ -319,11 +318,10 @@ namespace LinkUpPro.Infrastructure.Identity.Services
                     Id = user.Id,
                     Name = user.FirstName ?? "",
                     LastName = user.LastName ?? "",
-                    PhoneNumber = user.PhoneNumber ?? "",
+                    Phone = user.PhoneNumber ?? "",
                     ProfileImage = user.ProfilePicturePath,
-                    CurrentPassword = EditUserDto.CurrentPassword,
-                    NewPassword = EditUserDto.NewPassword,
-                    ConfirmPassword = EditUserDto.ConfirmPassword,
+                    CurrentPassword = EditUserDto.CurrentPassword ?? "",
+                    NewPassword = EditUserDto.NewPassword ?? "",
                     HasError = !result.Succeeded,
                     Errors = result.Errors.Select(s => s.Description).ToList()
                 };

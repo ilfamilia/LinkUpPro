@@ -1,8 +1,7 @@
 using AutoMapper;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.Dtos.User;
-using LinkUpPro.Core.Application.ViewModels;
-using LinkUpPro.Core.Application.Services;
+using LinkUpPro.Core.Application.Helpers;
 using LinkUpPro.Infrastructure.Identity.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
@@ -23,8 +22,17 @@ namespace LinkUpPro.Controllers
             _userManager = userManager;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
+            AppUser? userSession = await _userManager.GetUserAsync(User);
+
+            if(userSession != null)
+            {
+                var user = await _accountServiceForWebApp.GetUserByUserNameAsync(userSession.UserName ?? "");
+                if (user != null){
+                    return RedirectToRoute("Index", "Home");    
+                }
+            }
             return View();
         }
 
@@ -35,7 +43,11 @@ namespace LinkUpPro.Controllers
 
             if(userSession != null)
             {
-                return RedirectToAction("Index", "Home");
+                var user = await _accountServiceForWebApp.GetUserByUserNameAsync(userSession.UserName ?? "");
+                if(user != null){
+                    return RedirectToRoute("Index", "Home");    
+                }
+                return RedirectToAction("Index", "Login");
             }
 
             if(!ModelState.IsValid)
@@ -69,22 +81,19 @@ namespace LinkUpPro.Controllers
         }
         public IActionResult Register()
         {
-            return View(new RegisterUserViewModel()
-            {
-                Name = "",
-                LastName = "",
-                Phone = "",
-                Email = "",
-                UserName = "",
-                Password = "",
-                ConfirmPassword = "",
-                ProfileImageFile = null
-            });
+            return View();
         }
 
         [HttpPost]
         public async Task<ActionResult> Register(RegisterUserViewModel vm)
         {
+            Console.WriteLine("Registering user: " + vm.UserName);
+            Console.WriteLine("Registering user: " + vm.Email);
+            Console.WriteLine("Registering user: " + vm.Name);
+            Console.WriteLine("Registering user: " + vm.LastName);
+            Console.WriteLine("Registering user: " + vm.Phone);
+            Console.WriteLine("Registering user: " + vm.Password);
+            Console.WriteLine("Registering user: " + vm.ConfirmPassword);
             if (!ModelState.IsValid)
             {
                 return View(vm);
@@ -101,6 +110,24 @@ namespace LinkUpPro.Controllers
                 ViewBag.Errors = registerUserResponse.Errors;
                 return View(vm);
             }
+
+            if (registerUserResponse != null)
+            {
+                registerUserDto.Id = registerUserResponse.Id;
+
+                EditUserDto editUserDto = new()
+                {
+                    Id = registerUserResponse.Id,
+                    Name = registerUserDto.Name,
+                    LastName = registerUserDto.LastName,
+                    Phone = registerUserDto.Phone,
+                    CurrentPassword = registerUserDto.Password,
+                    NewPassword = registerUserDto.Password,
+                    ProfileImage = FileManager.Upload(vm.ProfileImageFile, registerUserDto.Id, "Users")
+                };
+
+                await _accountServiceForWebApp.EditUserAsync(editUserDto, origin, true);
+            }
             return RedirectToRoute(new { controller = "Login", action = "Index" });
         }
         
@@ -115,7 +142,7 @@ namespace LinkUpPro.Controllers
             EmailConfirmationDto dto = new() { UserName = vm.UserName };
             string origin = Request?.Headers?.Origin.ToString() ?? string.Empty;
             await _accountServiceForWebApp.ResendEmailActivationAsync(dto, origin);
-            return View();
+            return RedirectToRoute(new { controller = "Login", action = "Index" });
         }
 
         public async Task<IActionResult> ConfirmEmail(string userId,string token)

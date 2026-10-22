@@ -1,6 +1,6 @@
 @model RegisterUserViewModel
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Regitro de Usuario";
 }
 
 <!-- Pills navs -->
@@ -19,7 +19,7 @@
 <div class="tab-content">
    <div class="tab-pane fade show active" aria-labelledby="tab-register">
     <br />
-    <form asp-controller="Login" asp-action="Register" method="POST"">
+    <form asp-controller="Login" asp-action="Register" method="POST" enctype="multipart/form-data">
       <div data-mdb-input-init class="form-outline mb-4">
         <input asp-for="Name" type="text" class="form-control" placeholder="John"/>
         <label asp-for="Name" class="form-label" >Nombre del usuario</label>

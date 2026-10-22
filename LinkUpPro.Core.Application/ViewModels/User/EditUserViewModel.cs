@@ -19,16 +19,15 @@ namespace LinkUpPro.Core.Application.ViewModels.User
         [DataType(DataType.Text)]
         public required string Phone { get; set; }
 
-        [Required(ErrorMessage = "You must upload a profile image")]
         [DataType(DataType.Upload)]
         public IFormFile? ProfileImageFile { get; set; }
 
-        public required string CurrentPassword { get; set; }
+        public string? CurrentPassword { get; set; }
 
         [DataType(DataType.Password)]
-        public string? Password { get; set; }
+        public string? NewPassword { get; set; }
 
-        [Compare(nameof(Password), ErrorMessage = "Password must match")]       
+        [Compare(nameof(NewPassword), ErrorMessage = "Password must match")]       
         [DataType(DataType.Password)]
         public string? ConfirmPassword { get; set; }
     }

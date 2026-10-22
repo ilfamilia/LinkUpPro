@@ -23,7 +23,7 @@ namespace LinkUpPro.Core.Application.ViewModels.User
 
         [Required(ErrorMessage = "You must enter the profile image of user")]
         [DataType(DataType.Upload)]
-        public required IFormFile? ProfileImageFile { get; set; }
+        public required IFormFile ProfileImageFile { get; set; }
 
         [Required(ErrorMessage = "You must enter the username of user")]
         [DataType(DataType.Text)]
