@@ -1,0 +1,6 @@
+﻿.comment-avatar {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    flex-shrink: 0;
+}

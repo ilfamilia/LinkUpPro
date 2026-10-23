@@ -3,6 +3,7 @@ using LinkUpPro.Core.Application.Dtos.Post;
 using LinkUpPro.Core.Application.Enums;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.Results;
+using LinkUpPro.Core.Application.ViewModels.Comment;
 using LinkUpPro.Core.Application.ViewModels.Home;
 using LinkUpPro.Core.Application.ViewModels.Post;
 using LinkUpPro.Core.Domain.Enums;
@@ -11,6 +12,7 @@ using LinkUpPro.Infrastructure.Identity.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace LinkUpPro.Controllers
 {
@@ -18,13 +20,15 @@ namespace LinkUpPro.Controllers
     public class PostController : Controller
     {
         private readonly IPostService _postService;
+        private readonly ICommentService _commentService;
         private readonly UserManager<AppUser> _userManager;
         private readonly IMapper _mapper;
 
-        public PostController(IPostService postService, UserManager<AppUser> userManager,
-            IMapper mapper)
+        public PostController(IPostService postService, ICommentService commentService,
+            UserManager<AppUser> userManager, IMapper mapper)
         {
             _postService = postService;
+            _commentService = commentService;
             _userManager = userManager;
             _mapper = mapper;
         }
@@ -402,11 +406,81 @@ namespace LinkUpPro.Controllers
                 post.UserProfilePicturePath = user.ProfilePicturePath;
             }
 
+            if (posts.Count > 0)
+            {
+                var commentsResult = await _commentService.GetCommentsByPostIdsAsync(posts.Select(p => p.Id), user.Id);
+
+                if (!commentsResult.IsSuccess || commentsResult.Data == null)
+                {
+                    return Problem("No se pudieron cargar los comentarios.");
+                }
+
+                foreach (PostViewModel post in posts)
+                {
+                    if (commentsResult.Data.TryGetValue(post.Id, out var comments))
+                    {
+                        post.Comments = _mapper.Map<List<CommentViewModel>>(comments);
+                    }
+                }
+
+                List<CommentViewModel> allComments = [];
+
+                Stack<CommentViewModel> pendingComments = new(posts.SelectMany(p => p.Comments));
+
+                while (pendingComments.Count > 0)
+                {
+                    CommentViewModel comment = pendingComments.Pop();
+
+                    allComments.Add(comment);
+
+                    foreach (CommentViewModel reply in comment.Replies)
+                    {
+                        pendingComments.Push(reply);
+                    }
+                }
+
+                string[] authorIds = allComments
+                    .Where(c => !c.IsDeleted)
+                    .Select(c => c.UserId)
+                    .Distinct()
+                    .ToArray();
+
+                if (authorIds.Length > 0)
+                {
+                    var authors = await _userManager.Users
+                        .AsNoTracking()
+                        .Where(u => authorIds.Contains(u.Id))
+                        .Select(u => new
+                        {
+                            u.Id,
+                            u.UserName,
+                            u.ProfilePicturePath
+                        })
+                        .ToDictionaryAsync(u => u.Id);
+
+                    foreach (CommentViewModel comment in allComments)
+                    {
+                        if (comment.IsDeleted)
+                        {
+                            continue;
+                        }
+
+                        if (authors.TryGetValue(comment.UserId, out var author))
+                        {
+                            comment.UserName = author.UserName ?? string.Empty;
+                            comment.UserProfilePicturePath = author.ProfilePicturePath;
+                        }
+                    }
+                }
+            }
+
             HomeViewModel homeVm = new()
             {
                 CreatePost = vm,
                 Posts = posts
             };
+
+            ViewData["CurrentUserId"] = user.Id;
 
             return View("~/Views/Home/Index.cshtml", homeVm);
         }

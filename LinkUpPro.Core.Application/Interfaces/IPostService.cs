@@ -18,5 +18,7 @@ namespace LinkUpPro.Core.Application.Interfaces
         Task<ServiceResultWithData<PostDto>> GetMyPostByIdAsync(int postId, string userId);
 
         Task<ServiceResultWithData<PostDto>> GetVisiblePostByIdAsync(int postId, string userId);
+
+        Task<ServiceResultWithData<HashSet<int>>> GetVisiblePostIdsAsync(IEnumerable<int> postIds, string userId);
     }
 }

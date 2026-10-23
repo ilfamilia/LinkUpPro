@@ -310,6 +310,63 @@ namespace LinkUpPro.Core.Application.Services
             });
         }
 
+        public async Task<ServiceResultWithData<HashSet<int>>> GetVisiblePostIdsAsync(IEnumerable<int> postIds, string userId)
+        {
+            return await ExecuteAsync<HashSet<int>>(async () =>
+            {
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    return ServiceResultWithData<HashSet<int>>.Failure(OperationStatus.Unauthorized,
+                        "El usuario no está autenticado");
+                }
+
+                int[] ids = postIds.Distinct().ToArray();
+
+                if (ids.Any(id => id <= 0))
+                {
+                    return ServiceResultWithData<HashSet<int>>.Failure(OperationStatus.ValidationError,
+                        "Los identificadores de las publicaciones son inválidos");
+                }
+
+                bool isUserActive = await _userAccountStatusService.IsUserActiveAsync(userId);
+
+                if (!isUserActive)
+                {
+                    return ServiceResultWithData<HashSet<int>>.Failure(OperationStatus.Forbidden,
+                        "La cuenta del usuario no está activa");
+                }
+
+                var friendshipsQuery = _friendshipRepository.GetAllQuery()
+                    .Where(f => f.Status == FriendshipStatus.Active &&
+                        (f.User1Id == userId || f.User2Id == userId));
+
+                var posts = await _postRepository.GetAllQuery()
+                    .AsNoTracking()
+                    .Where(p => ids.Contains(p.Id) && !p.IsDeleted &&
+                        (
+                            p.UserId == userId ||
+                            (
+                                p.Privacy == PostPrivacy.FriendsOnly &&
+                                friendshipsQuery.Any(f =>
+                                    (f.User1Id == userId && f.User2Id == p.UserId) ||
+                                    (f.User2Id == userId && f.User1Id == p.UserId))
+                            )
+                        ))
+                    .Select(p => new { p.Id, p.UserId })
+                    .ToListAsync();
+
+                HashSet<string> activeUserIds = await _userAccountStatusService
+                    .GetActiveUserIdsAsync(posts.Select(p => p.UserId));
+
+                HashSet<int> visiblePostIds = posts
+                    .Where(p => activeUserIds.Contains(p.UserId))
+                    .Select(p => p.Id)
+                    .ToHashSet();
+
+                return ServiceResultWithData<HashSet<int>>.Success(visiblePostIds);
+            });
+        }
+
         public async Task<ServiceResultWithData<List<PostDto>>> GetMyPostsAsync(string userId, PostFilterDto? filter = null)
         {
             return await ExecuteAsync<List<PostDto>>(async () =>

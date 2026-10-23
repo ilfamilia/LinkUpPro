@@ -14,6 +14,7 @@ namespace LinkUpPro.Core.Application
             #endregion
 
             #region Services IOC
+            services.AddScoped<ICommentService, CommentService>();
             services.AddScoped<IPostService, PostService>();
             services.AddScoped<IReactionService, ReactionService>();
             #endregion

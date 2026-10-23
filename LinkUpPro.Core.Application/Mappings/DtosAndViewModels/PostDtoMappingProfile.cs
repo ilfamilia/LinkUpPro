@@ -18,6 +18,8 @@ namespace LinkUpPro.Core.Application.Mappings.DtosAndViewModels
                 .ForMember(dest => dest.UserName,
                     opt => opt.Ignore())
                 .ForMember(dest => dest.UserProfilePicturePath,
+                    opt => opt.Ignore())
+                .ForMember(dest => dest.Comments,
                     opt => opt.Ignore());
 
             CreateMap<PostDto, UpdatePostViewModel>()

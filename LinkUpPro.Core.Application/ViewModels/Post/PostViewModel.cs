@@ -1,4 +1,5 @@
-﻿using LinkUpPro.Core.Domain.Enums;
+﻿using LinkUpPro.Core.Application.ViewModels.Comment;
+using LinkUpPro.Core.Domain.Enums;
 
 namespace LinkUpPro.Core.Application.ViewModels.Post
 {
@@ -21,5 +22,7 @@ namespace LinkUpPro.Core.Application.ViewModels.Post
         public int DislikesCount { get; set; }
         public int CommentsCount { get; set; }
         public ReactionType? CurrentUserReaction { get; set; }
+
+        public List<CommentViewModel> Comments { get; set; } = [];
     }
 }
