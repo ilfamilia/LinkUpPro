@@ -156,6 +156,27 @@
                         </form>
                     </div>
                     
+                    @if (post.CurrentUserReaction.HasValue)
+                    {
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <span class="text-muted">
+                                Tu reacción:
+                                @(post.CurrentUserReaction == ReactionType.Like ? "Me gusta" : "No me gusta")
+                            </span>
+
+                            <form asp-controller="Reaction" asp-action="Toggle" method="post">
+
+                                <input type="hidden" name="PostId" value="@post.Id" />
+
+                                <input type="hidden" name="ReactionType" value="@post.CurrentUserReaction.Value" />
+
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                    Eliminar reacción
+                                </button>
+                            </form>
+                        </div>
+                    }
+                    
                     <div id="comments-@post.Id" class="mt-3">
                         <h6 class="mb-3">
                             Comentarios (@post.CommentsCount)
