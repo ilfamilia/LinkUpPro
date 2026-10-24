@@ -32,7 +32,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
                 UserName = "",
                 HasError = false,
                 Errors = []
-            };
+            }; //a
 
             var user = await _userManager.FindByNameAsync(loginDto.UserName);
 
@@ -156,18 +156,18 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
-                return "There is no acccount registered with this user";
+                return "No existe cuenta registrada con este usuario";
             }
 
             token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
             var result = await _userManager.ConfirmEmailAsync(user, token);
             if (result.Succeeded)
             {
-                return $"Account confirmed for {user.Email}. You can now use the app";
+                return $"Cuenta confirmada para {user.Email}. Ahora puede iniciar sesión.";
             }
             else
             {
-                return $"An error occurred while confirming this email {user.Email}";
+                return $"Ocurrio un error al confirmar el correo {user.Email}";
             }
         }
 
@@ -176,12 +176,12 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             var user = await _userManager.FindByNameAsync(request.UserName);
             if (user == null)
             {
-                return $"There is no acccount registered with this user";
+                return $"No existe cuenta registrada con este usuario";
             }
 
             if (user.EmailConfirmed)
             {
-                return $"This account {request.UserName} is already active, you can login";
+                return $"Esta cuenta {request.UserName} ya ha sido activada, por favor inicie sesión";
             }
             
             string verificationUri = await GetVerificationEmailUriAsync(user, origin);

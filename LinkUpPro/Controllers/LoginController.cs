@@ -139,7 +139,7 @@ namespace LinkUpPro.Controllers
         [HttpPost]
         public async Task<ActionResult> ResendEmailActivation(EmailConfirmationViewModel vm)
         {
-            EmailConfirmationDto dto = new() { UserName = vm.UserName };
+            EmailConfirmationDto dto = new() { UserName = vm.UserName }; //a
             string origin = Request?.Headers?.Origin.ToString() ?? string.Empty;
             await _accountServiceForWebApp.ResendEmailActivationAsync(dto, origin);
             return RedirectToRoute(new { controller = "Login", action = "Index" });
