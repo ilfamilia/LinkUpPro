@@ -30,7 +30,7 @@ namespace LinkUpPro.Controllers
             {
                 var user = await _accountServiceForWebApp.GetUserByUserNameAsync(userSession.UserName ?? "");
                 if (user != null){
-                    return RedirectToRoute("Index", "Home");    
+                    return RedirectToAction("Index", "Home");
                 }
             }
             return View();
@@ -45,7 +45,7 @@ namespace LinkUpPro.Controllers
             {
                 var user = await _accountServiceForWebApp.GetUserByUserNameAsync(userSession.UserName ?? "");
                 if(user != null){
-                    return RedirectToRoute("Index", "Home");    
+                    return RedirectToAction("Index", "Home");
                 }
                 return RedirectToAction("Index", "Login");
             }
