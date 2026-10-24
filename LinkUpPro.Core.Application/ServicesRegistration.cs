@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using LinkUpPro.Core.Application.Interfaces;
+using LinkUpPro.Core.Application.Services;
+using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
 namespace LinkUpPro.Core.Application
@@ -12,6 +14,9 @@ namespace LinkUpPro.Core.Application
             #endregion
 
             #region Services IOC
+            services.AddScoped<ICommentService, CommentService>();
+            services.AddScoped<IPostService, PostService>();
+            services.AddScoped<IReactionService, ReactionService>();
             #endregion
         }
     }

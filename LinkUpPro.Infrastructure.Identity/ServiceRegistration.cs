@@ -1,13 +1,13 @@
-﻿using LinkUpPro.Infrastructure.Identity.Contexts;
+﻿using LinkUpPro.Core.Application.Interfaces;
+using LinkUpPro.Infrastructure.Identity.Contexts;
 using LinkUpPro.Infrastructure.Identity.Entities;
+using LinkUpPro.Infrastructure.Identity.Services;
 using LinkUpPro.Infrastructure.Identity.TokenProviders;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using LinkUpPro.Core.Application.Interfaces;
-using LinkUpPro.Infrastructure.Identity.Services;
 
 namespace LinkUpPro.Infrastructure.Identity
 {
@@ -114,6 +114,12 @@ namespace LinkUpPro.Infrastructure.Identity
 
             services.AddAuthorization();
             services.AddScoped<IAccountServiceForWebApp, AccountServiceForWebApp>();
+            #endregion
+
+            #region Services IOC
+            services.AddHttpContextAccessor();
+            services.AddScoped<ICurrentUserContext, CurrentUserContext>();
+            services.AddScoped<IUserAccountStatusService, UserAccountStatusService>();
             #endregion
         }
 

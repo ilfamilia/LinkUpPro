@@ -1,0 +1,51 @@
+﻿@using LinkUpPro.Core.Domain.Enums
+@model LinkUpPro.Core.Application.ViewModels.Post.CreatePostViewModel
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h4 class="card-title mb-3">Crear publicación</h4>
+
+        <form asp-controller="Post" asp-action="Create" method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="mb-3">
+                <label asp-for="Content" class="form-label">Contenido</label>
+                <textarea asp-for="Content" class="form-control" rows="4"></textarea>
+                <span asp-validation-for="Content" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="MediaType" class="form-label">Tipo de publicación</label>
+                <select asp-for="MediaType" class="form-select" data-image-value="@((int)PostMediaType.Image)"
+                        data-video-value="@((int)PostMediaType.YouTubeVideo)">
+                    <option value="">Seleccione un tipo</option>
+                    <option value="@((int)PostMediaType.Image)">Imagen</option>
+                    <option value="@((int)PostMediaType.YouTubeVideo)">Video de YouTube</option>
+                </select>
+                <span asp-validation-for="MediaType" class="text-danger"></span>
+            </div>
+            <div id="imageSection" class="mb-3 d-none">
+                <label asp-for="ImageFile" class="form-label">Imagen</label>
+                <input asp-for="ImageFile" class="form-control" accept=".jpg,.jpeg,.png,.webp" />
+                <span asp-validation-for="ImageFile" class="text-danger"></span>
+            </div>
+            <div id="videoSection" class="mb-3 d-none">
+                <label asp-for="YouTubeUrl" class="form-label">Enlace de YouTube</label>
+                <input asp-for="YouTubeUrl" class="form-control" />
+                <span asp-validation-for="YouTubeUrl" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Privacy" class="form-label">Privacidad</label>
+                <select asp-for="Privacy" class="form-select">
+                    <option value="@((int)PostPrivacy.FriendsOnly)">Solo amigos</option>
+                    <option value="@((int)PostPrivacy.OnlyMe)">Solo yo</option>
+                </select>
+                <span asp-validation-for="Privacy" class="text-danger"></span>
+            </div>
+            <div class="form-check mb-3"> <input asp-for="AllowComments" class="form-check-input" />
+                <label asp-for="AllowComments" class="form-check-label">Permitir comentarios</label>
+            </div>
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">Publicar</button>
+            </div>
+        </form>
+    </div>
+</div>
