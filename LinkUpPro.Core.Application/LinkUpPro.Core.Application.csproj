@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <Folder Include="Helpers\" />
+    <Folder Include="Enums\" />
+    <Folder Include="Mappings\EntitiesAndDtos\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,9 +21,9 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.13" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\LinkUpPro.Core.Domain\LinkUpPro.Core.Domain.csproj" />
   </ItemGroup>
-
+  
 </Project>

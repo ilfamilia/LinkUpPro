@@ -12,4 +12,5 @@
   <Folder Name="/Source/Presentation/WebApp/">
     <Project Path="LinkUpPro/LinkUpPro.csproj" />
   </Folder>
+  <Project Path="LinkUpPro.Infrastructure.Share/LinkUpPro.Infrastructure.Share.csproj" />
 </Solution>

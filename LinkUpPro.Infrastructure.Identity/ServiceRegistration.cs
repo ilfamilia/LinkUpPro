@@ -113,6 +113,7 @@ namespace LinkUpPro.Infrastructure.Identity
             });
 
             services.AddAuthorization();
+            services.AddScoped<IAccountServiceForWebApp, AccountServiceForWebApp>();
             #endregion
 
             #region Services IOC
