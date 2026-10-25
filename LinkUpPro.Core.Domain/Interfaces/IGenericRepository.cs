@@ -6,6 +6,8 @@
         Task AddRangeAsync(IEnumerable<TEntity> entities);
         Task<bool> DeleteAsync(params object[] keyValues);
         Task<List<TEntity>> GetAllListAsync();
+        /// <summary>Filters rows asynchronously without exposing provider-specific query execution.</summary>
+        Task<List<TEntity>> GetListAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> predicate);
         Task<List<TEntity>> GetAllListWithIncludeAsync(List<string> properties);
         IQueryable<TEntity> GetAllQuery();
         IQueryable<TEntity> GetAllQueryWithInclude(List<string> properties);

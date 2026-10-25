@@ -1,0 +1,11 @@
+@model RequestItemViewModel
+@* Renders current public account data and navigable mutual-friend information. *@
+<img src="@SocialDisplay.ImageUrl(Url, Model.OtherUser.ProfilePicturePath)" alt="Foto de perfil de @Model.OtherUser.UserName"
+     class="post-profile-image rounded-circle" />
+<div class="flex-grow-1">
+    <div class="fw-semibold">@Model.OtherUser.FirstName @Model.OtherUser.LastName</div>
+    <small class="text-muted">@("@" + Model.OtherUser.UserName) · Enviada: @Model.RequestedAt.ToString("dd/MM/yyyy HH:mm") UTC</small>
+    <div>
+        <a asp-controller="Friends" asp-action="Mutual" asp-route-id="@Model.OtherUser.Id" class="text-decoration-none">@Model.MutualFriendCount amigos en común</a>
+    </div>
+</div>

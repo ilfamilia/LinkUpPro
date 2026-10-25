@@ -1,205 +1,321 @@
-using AutoMapper;
-using LinkUpPro.Core.Application.Interfaces;
+﻿using AutoMapper;
 using LinkUpPro.Core.Application.Dtos.User;
-using LinkUpPro.Core.Application.Helpers;
-using LinkUpPro.Infrastructure.Identity.Entities;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
-using System.Diagnostics;
+using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.ViewModels.User;
+using LinkUpPro.Helpers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace LinkUpPro.Controllers
 {
+    // Public account screens. Each anonymous action is marked explicitly; logout requires a session.
     public class LoginController : Controller
     {
         private readonly IMapper _mapper;
         private readonly IAccountServiceForWebApp _accountServiceForWebApp;
-        private readonly UserManager<AppUser> _userManager;
-        public LoginController(IMapper mapper, IAccountServiceForWebApp accountServiceForWebApp, UserManager<AppUser> userManager)
+
+        public LoginController(IMapper mapper, IAccountServiceForWebApp accountServiceForWebApp)
         {
             _mapper = mapper;
             _accountServiceForWebApp = accountServiceForWebApp;
-            _userManager = userManager;
         }
 
-        public async Task<IActionResult> Index()
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult Index(string? reason)
         {
-            AppUser? userSession = await _userManager.GetUserAsync(User);
-
-            if(userSession != null)
+            if (IsAuthenticated)
             {
-                var user = await _accountServiceForWebApp.GetUserByUserNameAsync(userSession.UserName ?? "");
-                if (user != null){
-                    return RedirectToAction("Index", "Home");
-                }
+                return RedirectToAction("Index", "Home");
             }
-            return View();
+
+            ViewBag.Info = reason switch
+            {
+                "timeout" => "Su sesión finalizó por inactividad. Inicie sesión nuevamente para continuar.",
+                "required" => "Debe iniciar sesión para acceder a esta sección.",
+                _ => null
+            };
+
+            return View(new LoginViewModel());
         }
 
+        [AllowAnonymous]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Index(LoginViewModel vm)
         {
-            AppUser? userSession = await _userManager.GetUserAsync(User);
-
-            if(userSession != null)
+            if (IsAuthenticated)
             {
-                var user = await _accountServiceForWebApp.GetUserByUserNameAsync(userSession.UserName ?? "");
-                if(user != null){
-                    return RedirectToAction("Index", "Home");
-                }
-                return RedirectToAction("Index", "Login");
+                return RedirectToAction("Index", "Home");
             }
 
-            if(!ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
                 vm.Password = "";
                 return View(vm);
             }
 
-            LoginDto loginDto = _mapper.Map<LoginDto>(vm);
-            LoginResponseDto? LoginResponse = await _accountServiceForWebApp.AuthenticateAsync(loginDto);
+            LoginResponseDto response = await _accountServiceForWebApp.AuthenticateAsync(_mapper.Map<LoginDto>(vm));
 
-            if(LoginResponse != null && !LoginResponse.HasError)
+            if (!response.HasError)
             {
-                return RedirectToRoute(new { controller = "Home", action = "Index" });
+                return RedirectToAction("Index", "Home");
             }
-            else
+
+            foreach (string error in response.Errors)
             {
-                foreach(var error in LoginResponse?.Errors ?? [])
-                {
-                    ModelState.AddModelError("userValidation", error);
-                }    
+                ModelState.AddModelError(string.Empty, error);
             }
+
             vm.Password = "";
             return View(vm);
         }
 
-        public async Task<ActionResult> Logout()
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Logout()
         {
             await _accountServiceForWebApp.SignOutAsync();
-            return RedirectToAction("Index", "Login");
-        }
-        public IActionResult Register()
-        {
-            return View();
+            return RedirectToAction(nameof(Index));
         }
 
-        [HttpPost]
-        public async Task<ActionResult> Register(RegisterUserViewModel vm)
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult Register()
         {
-            Console.WriteLine("Registering user: " + vm.UserName);
-            Console.WriteLine("Registering user: " + vm.Email);
-            Console.WriteLine("Registering user: " + vm.Name);
-            Console.WriteLine("Registering user: " + vm.LastName);
-            Console.WriteLine("Registering user: " + vm.Phone);
-            Console.WriteLine("Registering user: " + vm.Password);
-            Console.WriteLine("Registering user: " + vm.ConfirmPassword);
+            if (IsAuthenticated)
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
+            return View(new RegisterUserViewModel());
+        }
+
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Register(RegisterUserViewModel vm)
+        {
+            if (IsAuthenticated)
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
+            if (ModelState.IsValid)
+            {
+                if (await _accountServiceForWebApp.IsUserNameTakenAsync(vm.UserName))
+                {
+                    ModelState.AddModelError(nameof(vm.UserName), "Este nombre de usuario ya se encuentra registrado.");
+                }
+
+                if (await _accountServiceForWebApp.IsEmailTakenAsync(vm.Email))
+                {
+                    ModelState.AddModelError(nameof(vm.Email), "Este correo electrónico ya se encuentra registrado.");
+                }
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return RegisterView(vm);
+            }
+
+            // The id is generated first so the photo is stored in the new user's own folder.
+            string userId = Guid.NewGuid().ToString();
+            string imagePath;
+
+            try
+            {
+                imagePath = FileManager.Upload(vm.ProfileImageFile, userId, "Users");
+            }
+            catch (InvalidDataException ex)
+            {
+                ModelState.AddModelError(nameof(vm.ProfileImageFile), ex.Message);
+                return RegisterView(vm);
+            }
+
+            RegisterUserDto dto = _mapper.Map<RegisterUserDto>(vm);
+            dto.Id = userId;
+            dto.ProfileImage = imagePath;
+
+            RegisterResponseDto response = await _accountServiceForWebApp.RegisterUserAsync(dto, Origin);
+
+            if (response.HasError)
+            {
+                // Never keep a photo that is not attached to a created profile.
+                FileManager.DeleteFile(imagePath);
+
+                foreach (string error in response.Errors)
+                {
+                    ModelState.AddModelError(string.Empty, error);
+                }
+
+                return RegisterView(vm);
+            }
+
+            return RedirectToAction(nameof(Registered));
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult Registered()
+            => Notice("Cuenta creada",
+                "Su cuenta fue creada correctamente. Hemos enviado un enlace de activación a su correo electrónico.", true);
+
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<IActionResult> ConfirmEmail(string userId, string token)
+        {
+            UserResponseDto response = await _accountServiceForWebApp.ConfirmAccountAsync(userId, token);
+
+            if (response.HasError)
+            {
+                return Notice("Activación de cuenta", response.Errors[0], false);
+            }
+
+            TempData["LoginSuccess"] = response.Message;
+            return RedirectToAction(nameof(Index));
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult ResendEmailActivation()
+        {
+            if (IsAuthenticated)
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
+            return View(new EmailConfirmationViewModel());
+        }
+
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResendEmailActivation(EmailConfirmationViewModel vm)
+        {
             if (!ModelState.IsValid)
             {
                 return View(vm);
             }
-    
-            RegisterUserDto registerUserDto = _mapper.Map<RegisterUserDto>(vm);
-            string origin = Request?.Headers?.Origin.ToString() ?? string.Empty;
 
-            RegisterResponseDto? registerUserResponse = await _accountServiceForWebApp.RegisterUserAsync(registerUserDto, origin);
+            UserResponseDto response = await _accountServiceForWebApp.ResendEmailActivationAsync(
+                _mapper.Map<EmailConfirmationDto>(vm), Origin);
 
-            if (registerUserResponse.HasError)
+            if (response.HasError)
             {
-                ViewBag.HasError = true;
-                ViewBag.Errors = registerUserResponse.Errors;
+                ModelState.AddModelError(string.Empty, response.Errors[0]);
                 return View(vm);
             }
 
-            if (registerUserResponse != null)
-            {
-                registerUserDto.Id = registerUserResponse.Id;
-
-                EditUserDto editUserDto = new()
-                {
-                    Id = registerUserResponse.Id,
-                    Name = registerUserDto.Name,
-                    LastName = registerUserDto.LastName,
-                    Phone = registerUserDto.Phone,
-                    CurrentPassword = registerUserDto.Password,
-                    NewPassword = registerUserDto.Password,
-                    ProfileImage = FileManager.Upload(vm.ProfileImageFile, registerUserDto.Id, "Users")
-                };
-
-                await _accountServiceForWebApp.EditUserAsync(editUserDto, origin, true);
-            }
-            return RedirectToRoute(new { controller = "Login", action = "Index" });
-        }
-        
-        public async Task<ActionResult> ResendEmailActivation()
-        {
-            return View();
-        }
-        
-        [HttpPost]
-        public async Task<ActionResult> ResendEmailActivation(EmailConfirmationViewModel vm)
-        {
-            EmailConfirmationDto dto = new() { UserName = vm.UserName }; //a
-            string origin = Request?.Headers?.Origin.ToString() ?? string.Empty;
-            await _accountServiceForWebApp.ResendEmailActivationAsync(dto, origin);
-            return RedirectToRoute(new { controller = "Login", action = "Index" });
+            TempData["LoginSuccess"] = response.Message;
+            return RedirectToAction(nameof(Index));
         }
 
-        public async Task<IActionResult> ConfirmEmail(string userId,string token)
-        {
-            string response = await _accountServiceForWebApp.ConfirmAccountAsync(userId, token);
-            return View("ConfirmEmail", response);
-        }
-
+        [AllowAnonymous]
+        [HttpGet]
         public IActionResult ForgotPassword()
-        {           
-            return View(new ForgotPasswordRequestViewModel() {UserName = ""});
-        } 
+        {
+            if (IsAuthenticated)
+            {
+                return RedirectToAction("Index", "Home");
+            }
 
+            return View(new ForgotPasswordRequestViewModel());
+        }
+
+        [AllowAnonymous]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequestViewModel vm)
         {
-            if(!ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
                 return View(vm);
             }
-            string origin = Request?.Headers?.Origin.ToString() ?? string.Empty;
-            ForgotPasswordRequestDto Dto = new() {UserName = vm.UserName, Origin = origin};
-            UserResponseDto? returnUser = await _accountServiceForWebApp.ForgotPasswordAsync(Dto);
 
-            if (returnUser.HasError)
+            UserResponseDto response = await _accountServiceForWebApp.ForgotPasswordAsync(
+                new ForgotPasswordRequestDto { UserName = vm.UserName, Origin = Origin });
+
+            TempData["LoginSuccess"] = response.Message;
+            return RedirectToAction(nameof(Index));
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<IActionResult> ResetPassword(string userId, string token)
+        {
+            UserResponseDto check = await _accountServiceForWebApp.ValidateResetTokenAsync(userId, token);
+
+            if (check.HasError)
             {
-                ViewBag.HasError = true;
-                ViewBag.Errors = returnUser.Errors;
-                return View(vm);
+                return Notice("Restablecer contraseña", check.Errors[0], false);
             }
-            return RedirectToRoute(new { controller = "Login", action = "Index" });
+
+            return View(new ResetPasswordRequestViewModel { Id = userId, Token = token });
         }
 
-        public IActionResult ResetPassword(string userId, string token)
-        {           
-            return View(new ResetPasswordRequestViewModel() { Id = userId,Token = token,Password = ""});
-        }
-
+        [AllowAnonymous]
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ResetPassword(ResetPasswordRequestViewModel vm)
         {
             if (!ModelState.IsValid)
             {
                 return View(vm);
-            }  
+            }
 
-            ResetPasswordRequestDto dto = new() { Id = vm.Id ,Password = vm.Password,Token = vm.Token };
-            UserResponseDto? returnUser = await _accountServiceForWebApp.ResetPasswordAsync(dto);
+            UserResponseDto response = await _accountServiceForWebApp.ResetPasswordAsync(
+                _mapper.Map<ResetPasswordRequestDto>(vm));
 
-            if (returnUser.HasError)
+            if (response.HasError)
             {
-                ViewBag.HasError = true;
-                ViewBag.Errors = returnUser.Errors;
+                foreach (string error in response.Errors)
+                {
+                    ModelState.AddModelError(string.Empty, error);
+                }
+
                 return View(vm);
             }
 
-            return RedirectToRoute(new { controller = "Login", action = "Index" });
+            // A reset invalidates the current browser session too.
+            if (IsAuthenticated)
+            {
+                await _accountServiceForWebApp.SignOutAsync();
+            }
+
+            TempData["LoginSuccess"] = response.Message;
+            return RedirectToAction(nameof(Index));
         }
-    }    
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult AccessDenied()
+        {
+            Response.StatusCode = StatusCodes.Status403Forbidden;
+            return View("~/Views/Shared/SocialError.cshtml", new LinkUpPro.ViewModels.Social.SocialErrorViewModel
+            {
+                Message = "No posee permisos para realizar esta acción."
+            });
+        }
+
+        private bool IsAuthenticated => User.Identity?.IsAuthenticated == true;
+
+        // Links in emails point back to this same site.
+        private string Origin => $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+
+        private IActionResult RegisterView(RegisterUserViewModel vm)
+        {
+            vm.Password = "";
+            vm.ConfirmPassword = "";
+            return View(vm);
+        }
+
+        private IActionResult Notice(string title, string message, bool success)
+        {
+            ViewData["NoticeTitle"] = title;
+            ViewData["NoticeSuccess"] = success;
+            return View("Notice", message);
+        }
+    }
 }

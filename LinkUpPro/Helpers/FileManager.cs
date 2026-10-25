@@ -16,19 +16,21 @@ namespace LinkUpPro.Helpers
 
             if (file.Length == 0 || file.Length > maxFileSize)
             {
-                throw new InvalidDataException("La imagen no puede estar vacía ni superar los 5 MB");
+                throw new InvalidDataException(file.Length == 0
+                    ? "El archivo seleccionado no tiene un formato de imagen válido."
+                    : "La imagen seleccionada no puede superar los 5 MB.");
             }
 
             string extension = Path.GetExtension(file.FileName).ToLowerInvariant();
 
             if (extension is not (".jpg" or ".jpeg" or ".png" or ".webp"))
             {
-                throw new InvalidDataException("Solo se permiten imágenes JPG, JPEG, PNG y WEBP");
+                throw new InvalidDataException("El archivo seleccionado no tiene un formato de imagen válido.");
             }
 
             if (!HasValidImageSignature(file, extension))
             {
-                throw new InvalidDataException("El contenido del archivo no corresponde a una imagen del formato indicado");
+                throw new InvalidDataException("El archivo seleccionado no tiene un formato de imagen válido.");
             }
 
             if (!IsValidImageContent(file))

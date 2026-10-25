@@ -49,6 +49,12 @@ namespace LinkUpPro.Controllers
             switch (result.Status)
             {
                 case OperationStatus.Success:
+                    // Return to the screen that sent the reaction (Home, Amigos, perfil o detalle).
+                    if (!string.IsNullOrWhiteSpace(vm.ReturnUrl) && Url.IsLocalUrl(vm.ReturnUrl))
+                    {
+                        return LocalRedirect(vm.ReturnUrl);
+                    }
+
                     return RedirectToAction("Index", "Home");
 
                 case OperationStatus.ValidationError:

@@ -1,26 +1,51 @@
+using LinkUpPro.Core.Application.Dtos.Email;
 using LinkUpPro.Core.Application.Dtos.User;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Infrastructure.Identity.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
-using LinkUpPro.Core.Application.Dtos.Email;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace LinkUpPro.Infrastructure.Identity.Services
 {
     public class AccountServiceForWebApp : IAccountServiceForWebApp
     {
+        // Latest valid link per user is stored (hashed) as an Identity user token: issuing a new one
+        // replaces the previous link and using it removes it, so every link works only once.
+        private const string TokenProvider = "LinkUpPro";
+        private const string ActivationTokenName = "AccountActivation";
+        private const string ResetTokenName = "PasswordReset";
+        private static readonly TimeSpan ActivationLifetime = TimeSpan.FromHours(24);
+        private static readonly TimeSpan ResetLifetime = TimeSpan.FromHours(1);
+        private static readonly TimeSpan ResendInterval = TimeSpan.FromMinutes(5);
+
+        private const string InvalidCredentials = "El nombre de usuario o la contraseña son incorrectos.";
+        private const string InactiveAccount = "Su cuenta se encuentra inactiva. Debe activarla mediante el enlace enviado a su correo electrónico.";
+        private const string LockedAccount = "La cuenta se encuentra bloqueada temporalmente debido a varios intentos fallidos. Inténtelo nuevamente en 15 minutos o restablezca su contraseña.";
+        private const string InvalidActivation = "El enlace de activación no es válido o ya fue utilizado.";
+        private const string InvalidReset = "El enlace para restablecer la contraseña no es válido o ya fue utilizado.";
+
         private readonly UserManager<AppUser> _userManager;
         private readonly SignInManager<AppUser> _signInManager;
         private readonly IEmailService _emailService;
-        //a
-        public AccountServiceForWebApp(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IEmailService emailService)
+        private readonly IMemoryCache _cache;
+        private readonly ILogger<AccountServiceForWebApp> _logger;
+
+        public AccountServiceForWebApp(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager,
+            IEmailService emailService, IMemoryCache cache, ILogger<AccountServiceForWebApp> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _emailService = emailService;
+            _cache = cache;
+            _logger = logger;
         }
+
         public async Task<LoginResponseDto> AuthenticateAsync(LoginDto loginDto)
         {
             LoginResponseDto response = new()
@@ -32,46 +57,45 @@ namespace LinkUpPro.Infrastructure.Identity.Services
                 UserName = "",
                 HasError = false,
                 Errors = []
-            }; //a
+            };
 
-            var user = await _userManager.FindByNameAsync(loginDto.UserName);
+            var user = await _userManager.FindByNameAsync(loginDto.UserName.Trim());
 
+            // Unknown users get the same message as a wrong password; no failed-attempt counter applies.
             if (user == null)
             {
                 response.HasError = true;
-                response.Errors.Add($"There is no acccount registered with this username: {loginDto.UserName}");
+                response.Errors.Add(InvalidCredentials);
                 return response;
             }
 
-            if (!user.EmailConfirmed)
-            {
-                response.HasError = true;
-                response.Errors.Add($"This account {loginDto.UserName} is not active, you should check your email");
-                return response;
-            }
-
-            var result = await _signInManager.PasswordSignInAsync(user.UserName ?? "", loginDto.Password, loginDto.RememberMe, true);
+            // lockoutOnFailure: five consecutive wrong passwords lock the account for 15 minutes.
+            var result = await _signInManager.PasswordSignInAsync(user, loginDto.Password, loginDto.RememberMe, lockoutOnFailure: true);
 
             if (!result.Succeeded)
             {
                 response.HasError = true;
+
                 if (result.IsLockedOut)
                 {
-                    response.Errors.Add($"Your account {loginDto.UserName} has been locked due to multiple failed attempts." +
-                        $" Please try again in 15 minutes. If you don’t remember your password, you can go through the password " +
-                        $"reset process.");
+                    response.Errors.Add(LockedAccount);
+                }
+                else if (result.IsNotAllowed && !user.EmailConfirmed)
+                {
+                    response.Errors.Add(InactiveAccount);
                 }
                 else
                 {
-                    response.Errors.Add($"these credentials are invalid for this user: {user.UserName}");
-                }                    
+                    response.Errors.Add(InvalidCredentials);
+                }
+
                 return response;
             }
 
             response.Id = user.Id;
             response.Email = user.Email ?? "";
             response.UserName = user.UserName ?? "";
-            response.Name = user.FirstName ?? "";
+            response.Name = user.FirstName;
             response.LastName = user.LastName;
             response.IsVerified = user.EmailConfirmed;
 
@@ -82,10 +106,17 @@ namespace LinkUpPro.Infrastructure.Identity.Services
         {
             await _signInManager.SignOutAsync();
         }
-        
+
+        public async Task<bool> IsUserNameTakenAsync(string userName)
+            => await _userManager.FindByNameAsync(userName.Trim()) != null;
+
+        public async Task<bool> IsEmailTakenAsync(string email)
+            => await _userManager.FindByEmailAsync(email.Trim()) != null;
+
         public async Task<RegisterResponseDto> RegisterUserAsync(RegisterUserDto saveDto, string origin)
         {
-            RegisterResponseDto RegisterRes = new(){
+            RegisterResponseDto response = new()
+            {
                 Email = "",
                 Id = "",
                 LastName = "",
@@ -95,28 +126,31 @@ namespace LinkUpPro.Infrastructure.Identity.Services
                 Errors = []
             };
 
-            var userWithSameEmailName = await _userManager.FindByEmailAsync(saveDto.Email);
-            if (userWithSameEmailName != null)
+            // Identity compares normalized (upper-case) values, so the checks ignore letter case.
+            if (await IsUserNameTakenAsync(saveDto.UserName))
             {
-                RegisterRes.HasError = true;
-                RegisterRes.Errors.Add($"This email is already registered: {saveDto.Email}");
-                return RegisterRes;
+                response.Errors.Add("Este nombre de usuario ya se encuentra registrado.");
             }
 
-            var userWithSameUserName = await _userManager.FindByNameAsync(saveDto.UserName);
-            if (userWithSameUserName != null)
+            if (await IsEmailTakenAsync(saveDto.Email))
             {
-                RegisterRes.HasError = true;
-                RegisterRes.Errors.Add($"This username is already registered: {saveDto.UserName}");
-                return RegisterRes;
+                response.Errors.Add("Este correo electrónico ya se encuentra registrado.");
             }
 
-            AppUser user = new AppUser()
+            if (response.Errors.Count > 0)
             {
-                FirstName = saveDto.Name,
-                LastName = saveDto.LastName,
-                Email = saveDto.Email,
-                UserName = saveDto.UserName,
+                response.HasError = true;
+                return response;
+            }
+
+            AppUser user = new()
+            {
+                Id = saveDto.Id,
+                FirstName = saveDto.Name.Trim(),
+                LastName = saveDto.LastName.Trim(),
+                Email = saveDto.Email.Trim(),
+                UserName = saveDto.UserName.Trim(),
+                PhoneNumber = saveDto.Phone.Trim(),
                 EmailConfirmed = false,
                 CreatedAt = DateTime.UtcNow,
                 ProfilePicturePath = saveDto.ProfileImage ?? ""
@@ -124,286 +158,404 @@ namespace LinkUpPro.Infrastructure.Identity.Services
 
             var result = await _userManager.CreateAsync(user, saveDto.Password);
 
-            if (result.Succeeded)
+            if (!result.Succeeded)
             {
-                string verificationUri = await GetVerificationEmailUriAsync(user, origin);
-                await _emailService.SendEmailAsync(new EmailRequestDto()
-                {
-                    To = user.Email,
-                    Subject = "Confirm your email",
-                    HtmlBody = $"Please confirm your account by clicking this link: <a href='{verificationUri}'>link</a>"
-                });
-                RegisterRes.Id = user.Id;
-                RegisterRes.Email = user.Email ?? "";
-                RegisterRes.UserName = user.UserName ?? "";
-                RegisterRes.Name = user.FirstName ?? "";
-                RegisterRes.LastName = user.LastName ?? "";
-                RegisterRes.IsVerified = user.EmailConfirmed;
-                RegisterRes.HasError = false;
-
-                return RegisterRes;
-            }
-            else
-            {
-                RegisterRes.HasError = true;
-                RegisterRes.Errors.AddRange(result.Errors.Select(s => s.Description).ToList());
-                return RegisterRes;
-            }
-        }
-        
-        public async Task<string> ConfirmAccountAsync(string userId, string token)
-        {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                return "No existe cuenta registrada con este usuario";
+                response.HasError = true;
+                response.Errors.AddRange(result.Errors.Select(e => TranslateIdentityError(e)));
+                return response;
             }
 
-            token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
-            var result = await _userManager.ConfirmEmailAsync(user, token);
-            if (result.Succeeded)
-            {
-                return $"Cuenta confirmada para {user.Email}. Ahora puede iniciar sesión.";
-            }
-            else
-            {
-                return $"Ocurrio un error al confirmar el correo {user.Email}";
-            }
+            await SendActivationEmailAsync(user, origin);
+
+            response.Id = user.Id;
+            response.Email = user.Email ?? "";
+            response.UserName = user.UserName ?? "";
+            response.Name = user.FirstName;
+            response.LastName = user.LastName;
+            response.IsVerified = false;
+
+            return response;
         }
 
-        public async Task<string> ResendEmailActivationAsync(EmailConfirmationDto request,string origin)
+        public async Task<UserResponseDto> ConfirmAccountAsync(string userId, string token)
         {
-            var user = await _userManager.FindByNameAsync(request.UserName);
-            if (user == null)
+            UserResponseDto response = new() { HasError = true, Errors = [] };
+
+            var user = string.IsNullOrWhiteSpace(userId) ? null : await _userManager.FindByIdAsync(userId);
+
+            if (user == null || user.EmailConfirmed || string.IsNullOrWhiteSpace(token))
             {
-                return $"No existe cuenta registrada con este usuario";
+                response.Errors.Add(InvalidActivation);
+                return response;
             }
 
-            if (user.EmailConfirmed)
+            string? decoded = DecodeToken(token);
+            var check = await CheckStoredTokenAsync(user, ActivationTokenName, decoded, ActivationLifetime);
+
+            if (check == StoredTokenState.Expired)
             {
-                return $"Esta cuenta {request.UserName} ya ha sido activada, por favor inicie sesión";
+                response.Errors.Add("El enlace de activación ha vencido. Solicite uno nuevo.");
+                return response;
             }
-            
-            string verificationUri = await GetVerificationEmailUriAsync(user, origin);
-            await _emailService.SendEmailAsync(new EmailRequestDto()
+
+            if (check != StoredTokenState.Valid)
             {
-                To = user.Email,
-                Subject = "Confirm your email",
-                HtmlBody = $"Please confirm your account by clicking this link: <a href='{verificationUri}'>link</a>"
-            });
-            
-            user.EmailConfirmed = true;
-            await _userManager.UpdateAsync(user);
-            return "The email confirmation has been resent. Please check your email to activate your account.";
+                response.Errors.Add(InvalidActivation);
+                return response;
+            }
+
+            var result = await _userManager.ConfirmEmailAsync(user, decoded!);
+
+            if (!result.Succeeded)
+            {
+                response.Errors.Add(InvalidActivation);
+                return response;
+            }
+
+            await _userManager.RemoveAuthenticationTokenAsync(user, TokenProvider, ActivationTokenName);
+
+            response.HasError = false;
+            response.Message = "Su cuenta fue activada correctamente. Ya puede iniciar sesión.";
+            return response;
         }
 
-        public async Task<List<UserDto>> GetAllUserAsync(bool? isActive = true)
+        public async Task<UserResponseDto> ResendEmailActivationAsync(EmailConfirmationDto request, string origin)
         {
-            List<UserDto> ListUsersDto = [];
-
-            var users = _userManager.Users;
-            
-            if(isActive != null && isActive == true)
+            UserResponseDto response = new()
             {
-                users = users.Where(u => u.EmailConfirmed);
-            }
-
-            var listUsers = await users.ToListAsync();
-            
-            foreach (var item in listUsers)
-            {
-                ListUsersDto.Add(new UserDto()
-                {
-                    Id = item.Id,
-                    Name = item.FirstName ?? "",
-                    LastName = item.LastName ?? "",
-                    Email = item.Email ?? "",
-                    UserName = item.UserName ?? "",
-                    Phone = item.PhoneNumber,
-                    ProfileImage = item.ProfilePicturePath,
-                    isVerified = item.EmailConfirmed
-                });
-            }
-            return ListUsersDto;
-        }
-
-        public async Task<UserDto?> GetUserByUserNameAsync(string userName)
-        {
-            var user = await _userManager.FindByNameAsync(userName);
-            if(user == null)
-            {
-                return null;
-            }
-            UserDto userDto = new UserDto()
-            {
-                Id = user.Id,
-                Name = user.FirstName ?? "",
-                LastName = user.LastName ?? "",
-                Email = user.Email ?? "",
-                UserName = user.UserName ?? "",
-                Phone = user.PhoneNumber,
-                ProfileImage = user.ProfilePicturePath,
-                isVerified = user.EmailConfirmed
-            };
-            return userDto;
-        }
-
-        public async Task<UserDto?> GetUserByIdAsync(string Id)
-        {
-            var user = await _userManager.FindByIdAsync(Id);
-            if(user == null)
-            {
-                return null;
-            }
-            UserDto userDto = new UserDto()
-            {
-                Id = user.Id,
-                Name = user.FirstName ?? "",
-                LastName = user.LastName ?? "",
-                Email = user.Email ?? "",
-                UserName = user.UserName ?? "",
-                Phone = user.PhoneNumber,
-                ProfileImage = user.ProfilePicturePath,
-                isVerified = user.EmailConfirmed
-            };
-            return userDto;
-        }
-
-        public async Task<EditResponseDto> EditUserAsync(EditUserDto EditUserDto, string origin, bool? isCreated = false)
-        {
-            EditResponseDto Response = new(){ //a
-                Id = "",
-                Name = "",
-                LastName = "",
-                Phone = "",
-                ProfileImage = "",
-                CurrentPassword = "",
-                NewPassword = "",
                 HasError = false,
-                Errors = []
+                Errors = [],
+                Message = "Si la cuenta existe y todavía no ha sido activada, recibirá un nuevo enlace de activación."
             };
 
-            var user = await _userManager.FindByIdAsync(EditUserDto.Id);
+            string key = $"resend-activation:{request.UserName.Trim().ToUpperInvariant()}";
 
-            if (user == null)
+            // The wait applies to any entered name, so it does not reveal whether the account exists.
+            if (_cache.TryGetValue(key, out _))
             {
-                Response.HasError = true;
-                Response.Errors.Add($"There is no acccount registered with this user");
-                return Response;
+                response.HasError = true;
+                response.Errors.Add("Debe esperar cinco minutos antes de solicitar otro enlace de activación.");
+                return response;
             }
 
-            user.FirstName = EditUserDto.Name;
-            user.LastName = EditUserDto.LastName;
-            user.PhoneNumber = EditUserDto.Phone;
-            user.ProfilePicturePath = string.IsNullOrWhiteSpace(EditUserDto.ProfileImage) ? user.ProfilePicturePath : EditUserDto.ProfileImage;
+            _cache.Set(key, true, ResendInterval);
 
-            if (!string.IsNullOrWhiteSpace(EditUserDto.CurrentPassword))
+            var user = await _userManager.FindByNameAsync(request.UserName.Trim());
+
+            // Active accounts are left unchanged and receive no email.
+            if (user != null && !user.EmailConfirmed)
             {
-                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-                var resultChange = await _userManager.ResetPasswordAsync(user, token, EditUserDto.NewPassword ?? "");
-
-                if (resultChange != null && !resultChange.Succeeded)
-                {
-                    Response.HasError = true;
-                    Response.Errors.AddRange(resultChange.Errors.Select(s => s.Description).ToList());
-                    return Response;
-                }
+                await SendActivationEmailAsync(user, origin);
             }
 
-            var result = await _userManager.UpdateAsync(user);
-            if (result.Succeeded)
-            {
-                return new EditResponseDto()
-                {
-                    Id = user.Id,
-                    Name = user.FirstName ?? "",
-                    LastName = user.LastName ?? "",
-                    Phone = user.PhoneNumber ?? "",
-                    ProfileImage = user.ProfilePicturePath,
-                    CurrentPassword = EditUserDto.CurrentPassword ?? "",
-                    NewPassword = EditUserDto.NewPassword ?? "",
-                    HasError = !result.Succeeded,
-                    Errors = result.Errors.Select(s => s.Description).ToList()
-                };
-            }
-            else
-            {
-                Response.HasError = true;
-                Response.Errors.AddRange(result.Errors.Select(s => s.Description).ToList());
-                return Response;
-            }
+            return response;
         }
 
         public async Task<UserResponseDto> ForgotPasswordAsync(ForgotPasswordRequestDto request)
         {
-            UserResponseDto response = new() { HasError = false, Errors = [] };
-
-            var user = await _userManager.FindByEmailAsync(request.UserName);
-
-            if(user == null)
+            UserResponseDto response = new()
             {
-                response.HasError = true;
-                response.Errors.Add($"There is no acccount registered with this email: {request.UserName}");
-                return response;
+                HasError = false,
+                Errors = [],
+                Message = "Si el nombre de usuario corresponde a una cuenta registrada, recibirá un enlace para restablecer su contraseña."
+            };
+
+            var user = await _userManager.FindByNameAsync(request.UserName.Trim());
+
+            // Requesting a reset does not activate, deactivate or unlock the account.
+            if (user != null)
+            {
+                string token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                await StoreTokenAsync(user, ResetTokenName, token);
+
+                string uri = BuildUri(request.Origin, "Login/ResetPassword", user.Id, token);
+
+                await TrySendEmailAsync(user, "Restablecer contraseña - LinkUp Pro",
+                    $"<p>Hola {WebUtility.HtmlEncode(user.FirstName)},</p>" +
+                    "<p>Recibimos una solicitud para restablecer su contraseña. Este enlace vence en una hora:</p>" +
+                    $"<p><a href='{uri}'>Restablecer contraseña</a></p>" +
+                    "<p>Si usted no lo solicitó, ignore este correo.</p>");
             }
 
-            var ResetPasswordUri = await GetResetPasswordUriAsync(user, request.Origin);
+            return response;
+        }
 
-            await _emailService.SendEmailAsync(new EmailRequestDto()
+        public async Task<UserResponseDto> ValidateResetTokenAsync(string userId, string token)
+        {
+            UserResponseDto response = new() { HasError = true, Errors = [] };
+
+            var user = string.IsNullOrWhiteSpace(userId) ? null : await _userManager.FindByIdAsync(userId);
+            var check = user == null
+                ? StoredTokenState.Invalid
+                : await CheckStoredTokenAsync(user, ResetTokenName, DecodeToken(token), ResetLifetime);
+
+            if (check == StoredTokenState.Expired)
             {
-               To = user.Email,
-               Subject = "Reset Password",
-               HtmlBody = $"Please reset your password by clicking this link: <a href='{ResetPasswordUri}'>link</a>" 
-            });
+                response.Errors.Add("El enlace para restablecer la contraseña ha vencido. Solicite uno nuevo.");
+            }
+            else if (check != StoredTokenState.Valid)
+            {
+                response.Errors.Add(InvalidReset);
+            }
+            else
+            {
+                response.HasError = false;
+            }
+
             return response;
         }
 
         public async Task<UserResponseDto> ResetPasswordAsync(ResetPasswordRequestDto request)
         {
-            UserResponseDto response = new() { HasError = false, Errors = [] };
+            var response = await ValidateResetTokenAsync(request.Id, request.Token);
 
-            var user = await _userManager.FindByIdAsync(request.Id);
-
-            if(user == null)
+            if (response.HasError)
             {
-                response.HasError = true;
-                response.Errors.Add($"There is no acccount registered with this user");
                 return response;
             }
-            var token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(request.Token));
-            var result = await _userManager.ResetPasswordAsync(user, token, request.Password);
+
+            var user = (await _userManager.FindByIdAsync(request.Id))!;
+
+            // ResetPasswordAsync also renews the security stamp, which invalidates every previous session.
+            var result = await _userManager.ResetPasswordAsync(user, DecodeToken(request.Token)!, request.Password);
 
             if (!result.Succeeded)
             {
                 response.HasError = true;
-                response.Errors.Add($"An error occurred while resetting the password for this user");
+                response.Errors.AddRange(result.Errors.Select(e => TranslateIdentityError(e)));
                 return response;
             }
 
-            user.EmailConfirmed = true;
-            await _userManager.UpdateAsync(user);
+            await _userManager.RemoveAuthenticationTokenAsync(user, TokenProvider, ResetTokenName);
+            await _userManager.ResetAccessFailedCountAsync(user);
+            await _userManager.SetLockoutEndDateAsync(user, null);
+
+            // The activation state is intentionally not modified.
+            response.Message = "Su contraseña fue restablecida correctamente. Ya puede iniciar sesión.";
             return response;
         }
 
-        private async Task<string> GetVerificationEmailUriAsync(AppUser user, string origin)
+        public async Task<EditResponseDto> EditUserAsync(EditUserDto dto)
         {
-            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            token = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-            var route = "Login/ConfirmEmail";
-            var completeUrl = new Uri(string.Concat(origin, "/", route));
-            var verificationUri = QueryHelpers.AddQueryString(completeUrl.ToString(), "userId", user.Id);
-            verificationUri = QueryHelpers.AddQueryString(verificationUri.ToString(), "token", token);
-            return verificationUri;
+            EditResponseDto response = new() { HasError = false, Errors = [] };
+
+            var user = await _userManager.FindByIdAsync(dto.Id);
+
+            if (user == null)
+            {
+                response.HasError = true;
+                response.Errors.Add("No posee permisos para modificar este perfil.");
+                return response;
+            }
+
+            bool wantsPasswordChange = !string.IsNullOrEmpty(dto.CurrentPassword) || !string.IsNullOrEmpty(dto.NewPassword);
+
+            if (wantsPasswordChange)
+            {
+                if (string.IsNullOrEmpty(dto.CurrentPassword) || string.IsNullOrEmpty(dto.NewPassword))
+                {
+                    response.HasError = true;
+                    response.Errors.Add("Para cambiar su contraseña debe completar la contraseña actual, la nueva contraseña y su confirmación.");
+                    return response;
+                }
+
+                if (!await _userManager.CheckPasswordAsync(user, dto.CurrentPassword))
+                {
+                    response.HasError = true;
+                    response.Errors.Add("La contraseña actual es incorrecta.");
+                    return response;
+                }
+
+                if (dto.CurrentPassword == dto.NewPassword)
+                {
+                    response.HasError = true;
+                    response.Errors.Add("La nueva contraseña debe ser diferente de la contraseña actual.");
+                    return response;
+                }
+
+                foreach (var validator in _userManager.PasswordValidators)
+                {
+                    var validation = await validator.ValidateAsync(_userManager, user, dto.NewPassword);
+
+                    if (!validation.Succeeded)
+                    {
+                        response.HasError = true;
+                        response.Errors.AddRange(validation.Errors.Select(e => TranslateIdentityError(e)));
+                    }
+                }
+
+                if (response.HasError)
+                {
+                    return response;
+                }
+            }
+
+            response.PreviousProfileImage = user.ProfilePicturePath;
+
+            user.FirstName = dto.Name.Trim();
+            user.LastName = dto.LastName.Trim();
+            user.PhoneNumber = dto.Phone.Trim();
+            user.UpdatedAt = DateTime.UtcNow;
+
+            if (!string.IsNullOrWhiteSpace(dto.ProfileImage))
+            {
+                user.ProfilePicturePath = dto.ProfileImage;
+            }
+
+            if (wantsPasswordChange)
+            {
+                // Personal data, hash and a new security stamp are saved in one update: nothing partial,
+                // and the new stamp invalidates every session, including "Mantener sesión iniciada" cookies.
+                user.PasswordHash = _userManager.PasswordHasher.HashPassword(user, dto.NewPassword!);
+                user.SecurityStamp = Guid.NewGuid().ToString("N").ToUpperInvariant();
+                response.PasswordChanged = true;
+            }
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                response.HasError = true;
+                response.PasswordChanged = false;
+                response.Errors.AddRange(result.Errors.Select(e => TranslateIdentityError(e)));
+            }
+
+            return response;
         }
 
-        private async Task<string> GetResetPasswordUriAsync(AppUser user, string origin)
+        public async Task<List<UserDto>> GetAllUserAsync(bool? isActive = true)
         {
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            token = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-            var route = "Login/ResetPassword";
-            var completeUrl = new Uri(string.Concat(origin, "/", route));
-            var resetUri = QueryHelpers.AddQueryString(completeUrl.ToString(), "token", token);
-            return resetUri;
+            var users = _userManager.Users.AsNoTracking();
+
+            if (isActive == true)
+            {
+                users = users.Where(u => u.EmailConfirmed);
+            }
+
+            return (await users.ToListAsync()).Select(ToDto).ToList();
         }
-    } //a
+
+        public async Task<UserDto?> GetUserByUserNameAsync(string userName)
+        {
+            var user = await _userManager.FindByNameAsync(userName);
+            return user == null ? null : ToDto(user);
+        }
+
+        public async Task<UserDto?> GetUserByIdAsync(string Id)
+        {
+            var user = await _userManager.FindByIdAsync(Id);
+            return user == null ? null : ToDto(user);
+        }
+
+        #region Private helpers
+
+        private enum StoredTokenState { Valid, Invalid, Expired }
+
+        private static UserDto ToDto(AppUser user) => new()
+        {
+            Id = user.Id,
+            Name = user.FirstName,
+            LastName = user.LastName,
+            Email = user.Email ?? "",
+            UserName = user.UserName ?? "",
+            Phone = user.PhoneNumber,
+            ProfileImage = user.ProfilePicturePath,
+            isVerified = user.EmailConfirmed
+        };
+
+        private async Task SendActivationEmailAsync(AppUser user, string origin)
+        {
+            string token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            await StoreTokenAsync(user, ActivationTokenName, token);
+
+            string uri = BuildUri(origin, "Login/ConfirmEmail", user.Id, token);
+
+            await TrySendEmailAsync(user, "Active su cuenta - LinkUp Pro",
+                $"<p>Hola {WebUtility.HtmlEncode(user.FirstName)},</p>" +
+                "<p>Gracias por registrarse en LinkUp Pro. Active su cuenta con el siguiente enlace (vence en 24 horas):</p>" +
+                $"<p><a href='{uri}'>Activar cuenta</a></p>");
+        }
+
+        // A failed email does not undo the account; the user can request a new link.
+        private async Task TrySendEmailAsync(AppUser user, string subject, string body)
+        {
+            try
+            {
+                await _emailService.SendEmailAsync(new EmailRequestDto { To = user.Email, Subject = subject, HtmlBody = body });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "The account email could not be sent.");
+            }
+        }
+
+        private async Task StoreTokenAsync(AppUser user, string name, string token)
+            => await _userManager.SetAuthenticationTokenAsync(user, TokenProvider, name,
+                $"{Hash(token)}|{DateTime.UtcNow.Ticks}");
+
+        private async Task<StoredTokenState> CheckStoredTokenAsync(AppUser user, string name, string? token, TimeSpan lifetime)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return StoredTokenState.Invalid;
+            }
+
+            string? stored = await _userManager.GetAuthenticationTokenAsync(user, TokenProvider, name);
+            string[] parts = stored?.Split('|') ?? [];
+
+            if (parts.Length != 2 || !long.TryParse(parts[1], out long ticks) ||
+                !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(parts[0]), Encoding.UTF8.GetBytes(Hash(token))))
+            {
+                return StoredTokenState.Invalid;
+            }
+
+            return DateTime.UtcNow - new DateTime(ticks, DateTimeKind.Utc) > lifetime
+                ? StoredTokenState.Expired
+                : StoredTokenState.Valid;
+        }
+
+        private static string Hash(string value)
+            => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+
+        private static string? DecodeToken(string? token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return null;
+            }
+
+            try
+            {
+                return Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+        }
+
+        private static string BuildUri(string origin, string route, string userId, string token)
+        {
+            string encoded = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+            string uri = QueryHelpers.AddQueryString($"{origin.TrimEnd('/')}/{route}", "userId", userId);
+            return QueryHelpers.AddQueryString(uri, "token", encoded);
+        }
+
+        private static string TranslateIdentityError(IdentityError error) => error.Code switch
+        {
+            "PasswordTooShort" => "La contraseña debe tener al menos ocho caracteres.",
+            "PasswordRequiresUpper" => "La contraseña debe contener al menos una letra mayúscula.",
+            "PasswordRequiresLower" => "La contraseña debe contener al menos una letra minúscula.",
+            "PasswordRequiresDigit" => "La contraseña debe contener al menos un número.",
+            "PasswordRequiresNonAlphanumeric" => "La contraseña debe contener al menos un carácter especial.",
+            "DuplicateUserName" => "Este nombre de usuario ya se encuentra registrado.",
+            "DuplicateEmail" => "Este correo electrónico ya se encuentra registrado.",
+            "InvalidEmail" => "Debe ingresar un correo electrónico válido.",
+            "InvalidUserName" => "El nombre de usuario solo puede contener letras, números y los caracteres - . _ @ +",
+            "InvalidToken" => InvalidReset,
+            _ => "Ocurrió un error al procesar la solicitud. Inténtelo nuevamente."
+        };
+
+        #endregion
+    }
 }

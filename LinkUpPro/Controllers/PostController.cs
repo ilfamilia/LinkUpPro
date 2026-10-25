@@ -23,14 +23,59 @@ namespace LinkUpPro.Controllers
         private readonly ICommentService _commentService;
         private readonly UserManager<AppUser> _userManager;
         private readonly IMapper _mapper;
+        private readonly LinkUpPro.Services.PostFeedBuilder _feedBuilder;
 
         public PostController(IPostService postService, ICommentService commentService,
-            UserManager<AppUser> userManager, IMapper mapper)
+            UserManager<AppUser> userManager, IMapper mapper, LinkUpPro.Services.PostFeedBuilder feedBuilder)
         {
             _postService = postService;
             _commentService = commentService;
             _userManager = userManager;
             _mapper = mapper;
+            _feedBuilder = feedBuilder;
+        }
+
+        // Single post page used by notifications and friend feeds; visibility is rechecked on every request.
+        [HttpGet]
+        public async Task<IActionResult> Details(int postId)
+        {
+            string? userId = _userManager.GetUserId(User);
+
+            if (userId == null)
+            {
+                return Challenge();
+            }
+
+            List<LinkUpPro.ViewModels.Social.PostCardViewModel> cards;
+
+            try
+            {
+                // The publication service rechecks author/viewer activity, deletion, privacy and friendship.
+                cards = await _feedBuilder.BuildAsync([postId]);
+            }
+            catch (LinkUpPro.Core.Domain.Exceptions.DomainRuleException)
+            {
+                cards = [];
+            }
+
+            if (cards.Count == 0)
+            {
+                Response.StatusCode = StatusCodes.Status403Forbidden;
+
+                return View("~/Views/Shared/SocialError.cshtml", new LinkUpPro.ViewModels.Social.SocialErrorViewModel
+                {
+                    Message = "No posee permisos para visualizar esta publicación."
+                });
+            }
+
+            ViewData["CommentError"] = TempData["CommentError"]?.ToString();
+            ViewData["CommentPostId"] = TempData["CommentPostId"]?.ToString();
+            ViewData["CommentParentId"] = TempData["CommentParentId"]?.ToString();
+            ViewData["CommentContent"] = TempData["CommentContent"]?.ToString();
+            ViewData["CurrentUserId"] = userId;
+            ViewData["FriendIds"] = await _feedBuilder.GetFriendIdsAsync();
+
+            return View(cards[0]);
         }
 
         public IActionResult Create()

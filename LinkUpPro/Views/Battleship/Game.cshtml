@@ -1,0 +1,183 @@
+@model GameDetailsViewModel
+@* Displays only authorized boards and includes attack forms solely for unvisited cells on the caller's turn. *@
+@{
+    ViewData["Title"] = "Partida de Battleship";
+    bool finished = Model.Status == BattleshipStatus.Finished;
+    bool inSetup = Model.Status == BattleshipStatus.Setup;
+    bool waitingSetup = inSetup && Model.UnplacedShipNumbers.Count == 0;
+    bool showPlacement = Model.ShowOwnBoard || inSetup;
+    bool canAttack = !showPlacement && !Model.ShowOpponentAttacks && Model.Status == BattleshipStatus.Active && Model.IsOwnTurn;
+    var attacks = Model.ShowOpponentAttacks ? Model.OpponentAttacks : Model.OwnAttacks;
+
+    string boardTitle = showPlacement ? "Mi tablero de posicionamiento"
+        : Model.ShowOpponentAttacks ? $"Tablero de ataque de {Model.Opponent.UserName}"
+        : "Mi tablero de ataque";
+
+    var board = BoardViewModel.Create(boardTitle, Model.Id, Model.Version, (row, column) =>
+    {
+        if (showPlacement)
+            return (Model.OwnShipCells.Any(c => c.Row == row && c.Column == column) ? BoardCellState.Ship : BoardCellState.Water,
+                BoardCellMode.None, null);
+        var attack = attacks.FirstOrDefault(a => a.Row == row && a.Column == column);
+        if (attack is not null)
+            return (attack.IsHit ? BoardCellState.Hit : BoardCellState.Miss, BoardCellMode.None, null);
+        return (BoardCellState.Water, canAttack ? BoardCellMode.Attack : BoardCellMode.None, null);
+    });
+
+    int hits = Model.OwnAttacks.Count(a => a.IsHit);
+    int misses = Model.OwnAttacks.Count - hits;
+}
+
+@section Styles
+{
+    <link rel="stylesheet" href="~/css/Battleship/Battleship.css" asp-append-version="true" />
+}
+
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h2 class="mb-0">Battleship</h2>
+        <span class="text-muted">Partida contra <span class="fw-semibold">@Model.Opponent.UserName</span></span>
+    </div>
+
+    @if (finished)
+    {
+        <div class="alert @(Model.IsWinner ? "alert-success" : "alert-danger") bs-turn-banner" role="status">
+            <div class="fw-semibold">@(Model.IsWinner ? "¡Ganaste la partida!" : "Perdiste la partida")</div>
+            <small>
+                Ganador: @(Model.IsWinner ? "Yo" : Model.WinnerUserName)
+                @if (Model.EndReason.HasValue) { <span> · @SocialDisplay.EndReason(Model.EndReason)</span> }
+            </small>
+        </div>
+    }
+    else if (waitingSetup)
+    {
+        <div class="alert alert-warning bs-turn-banner" role="status">
+            El otro jugador aún no ha terminado de posicionar todos sus barcos.
+        </div>
+    }
+    else if (inSetup)
+    {
+        <div class="alert alert-info bs-turn-banner" role="status">
+            Le faltan @Model.UnplacedShipNumbers.Count barcos por posicionar.
+        </div>
+    }
+    else if (!showPlacement)
+    {
+        <div class="alert @(Model.IsOwnTurn ? "alert-primary" : "alert-secondary") bs-turn-banner" role="status">
+            @if (Model.IsOwnTurn)
+            {
+                <span class="fw-semibold">Es tu turno de atacar.</span>
+                <small class="d-block">Haga clic en una celda del tablero para lanzar su ataque.</small>
+            }
+            else
+            {
+                <span class="fw-semibold">Es turno de @Model.TurnUserName de atacar.</span>
+                <small class="d-block">Debe esperar que finalice su ataque. Use “Refrescar pantalla” para comprobar si ya es su turno.</small>
+            }
+        </div>
+    }
+
+    <div class="row g-4">
+        <div class="col-12 col-lg-8">
+            <div class="card h-100">
+                <div class="card-body">
+                    <partial name="_Board" model="board" />
+
+                    <div class="bs-legend">
+                        @if (showPlacement)
+                        {
+                            <span><i class="bs-swatch is-water"></i> Agua</span>
+                            <span><i class="bs-swatch is-ship"></i> Mis barcos</span>
+                        }
+                        else
+                        {
+                            <span><i class="bs-swatch is-water"></i> Sin atacar</span>
+                            <span><i class="bs-swatch is-hit"></i> Acierto</span>
+                            <span><i class="bs-swatch is-miss"></i> Fallo</span>
+                        }
+                    </div>
+
+                    @if (!showPlacement && Model.Status == BattleshipStatus.Active && !Model.IsOwnTurn)
+                    {
+                        <p class="text-center text-muted mt-3 mb-0">Es turno de @Model.TurnUserName de atacar.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Resumen</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li class="d-flex justify-content-between py-1 border-bottom">
+                            <span class="text-muted">Estado</span>
+                            <span>@(finished ? "Finalizada" : inSetup ? "Configuración" : "En combate")</span>
+                        </li>
+                        <li class="d-flex justify-content-between py-1 border-bottom">
+                            <span class="text-muted">Inicio</span>
+                            <span>@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC</span>
+                        </li>
+                        <li class="d-flex justify-content-between py-1 border-bottom">
+                            <span class="text-muted">Duración</span>
+                            <span>@Model.DurationHours.ToString("F2") h</span>
+                        </li>
+                        @if (Model.Status == BattleshipStatus.Active && Model.TurnAssignedAt.HasValue)
+                        {
+                            <li class="d-flex justify-content-between py-1 border-bottom">
+                                <span class="text-muted">Turno asignado</span>
+                                <span>@Model.TurnAssignedAt.Value.ToString("dd/MM/yyyy HH:mm") UTC</span>
+                            </li>
+                        }
+                        <li class="d-flex justify-content-between py-1 border-bottom">
+                            <span class="text-muted">Mis aciertos / fallos</span>
+                            <span><span class="text-danger fw-semibold">@hits</span> / <span class="text-success fw-semibold">@misses</span></span>
+                        </li>
+                    </ul>
+
+                    @if (!inSetup)
+                    {
+                        <div class="mt-3">
+                            <small class="text-muted">Barcos del oponente hundidos: @Model.OpponentShipsSunk de 5</small>
+                            <div class="progress" role="progressbar" aria-valuenow="@Model.OpponentShipsSunk" aria-valuemin="0" aria-valuemax="5" style="height: .5rem;">
+                                <div class="progress-bar bg-danger" style="width: @(Model.OpponentShipsSunk * 20)%"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body d-grid gap-2">
+                    @if (!finished)
+                    {
+                        @if (inSetup && !waitingSetup)
+                        {
+                            <a asp-controller="Battleship" asp-action="Game" asp-route-id="@Model.Id" class="btn btn-success">Continuar configuración</a>
+                        }
+                        else
+                        {
+                            <a asp-controller="Battleship" asp-action="Game" asp-route-id="@Model.Id" class="btn btn-primary">Refrescar pantalla</a>
+                        }
+                        @if (Model.ShowOwnBoard && Model.Status == BattleshipStatus.Active)
+                        {
+                            <a asp-controller="Battleship" asp-action="Game" asp-route-id="@Model.Id" class="btn btn-outline-primary">Ver mi tablero de ataque</a>
+                        }
+                        else if (!inSetup)
+                        {
+                            <a asp-controller="Battleship" asp-action="OwnBoard" asp-route-id="@Model.Id" class="btn btn-outline-primary">Ver mi tablero</a>
+                        }
+                        <a asp-controller="Battleship" asp-action="ConfirmSurrender" asp-route-id="@Model.Id" class="btn btn-outline-danger">Rendirse</a>
+                    }
+                    else
+                    {
+                        <a asp-controller="Battleship" asp-action="Game" asp-route-id="@Model.Id" class="btn btn-outline-primary @(!Model.ShowOwnBoard && !Model.ShowOpponentAttacks ? "active" : "")">Mi tablero de ataque</a>
+                        <a asp-controller="Battleship" asp-action="OpponentBoard" asp-route-id="@Model.Id" class="btn btn-outline-primary @(Model.ShowOpponentAttacks ? "active" : "")">Ver tablero del otro jugador</a>
+                        <a asp-controller="Battleship" asp-action="OwnBoard" asp-route-id="@Model.Id" class="btn btn-outline-primary @(Model.ShowOwnBoard ? "active" : "")">Ver mi tablero de posicionamiento</a>
+                    }
+                    <a asp-controller="Battleship" asp-action="Index" class="btn btn-secondary">Volver atrás</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

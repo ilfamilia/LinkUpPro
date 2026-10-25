@@ -1,0 +1,65 @@
+@model BoardViewModel
+@* Shared 12x12 board: rows A-L, columns 1-12. Only Attack cells post (with antiforgery and game version). *@
+@{
+    const string rowLabels = "ABCDEFGHIJKL";
+    bool interactive = Model.Cells.Any(c => c.Mode != BoardCellMode.None);
+    string StateClass(BoardCellState state) => state switch
+    {
+        BoardCellState.Ship => "is-ship",
+        BoardCellState.Hit => "is-hit",
+        BoardCellState.Miss => "is-miss",
+        BoardCellState.Selected => "is-selected",
+        _ => ""
+    };
+    string StateText(BoardCellState state) => state switch
+    {
+        BoardCellState.Ship => "barco",
+        BoardCellState.Hit => "acierto",
+        BoardCellState.Miss => "fallo",
+        BoardCellState.Selected => "celda seleccionada",
+        _ => "agua"
+    };
+}
+
+<div class="bs-board-wrapper">
+    @if (!string.IsNullOrWhiteSpace(Model.Title))
+    {
+        <div class="bs-board-title">@Model.Title</div>
+    }
+
+    <div class="bs-board @(interactive ? "" : "is-locked")" role="grid" aria-label="@(string.IsNullOrWhiteSpace(Model.Title) ? "Tablero" : Model.Title) de 12 por 12">
+        <span class="bs-label" aria-hidden="true"></span>
+        @for (var column = 1; column <= 12; column++)
+        {
+            <span class="bs-label" aria-hidden="true">@column</span>
+        }
+
+        @for (var row = 0; row < 12; row++)
+        {
+            <span class="bs-label" aria-hidden="true">@rowLabels[row]</span>
+            foreach (var cell in Model.Cells.Where(c => c.Row == row).OrderBy(c => c.Column))
+            {
+                var label = $"{rowLabels[cell.Row]}{cell.Column + 1}: {StateText(cell.State)}";
+                switch (cell.Mode)
+                {
+                    case BoardCellMode.Link:
+                        <a class="bs-cell @StateClass(cell.State)" href="@cell.Href" title="@label" aria-label="@label"></a>
+                        break;
+                    case BoardCellMode.Attack:
+                        <form asp-controller="Battleship" asp-action="Attack" method="post">
+                            <input name="Id" type="hidden" value="@Model.GameId" />
+                            <input name="Version" type="hidden" value="@Model.Version" />
+                            <input name="Row" type="hidden" value="@cell.Row" />
+                            <input name="Column" type="hidden" value="@cell.Column" />
+                            <button type="submit" class="bs-cell @StateClass(cell.State)" title="Atacar @rowLabels[cell.Row]@(cell.Column + 1)"
+                                    aria-label="Atacar @rowLabels[cell.Row]@(cell.Column + 1)"></button>
+                        </form>
+                        break;
+                    default:
+                        <span class="bs-cell @StateClass(cell.State)" title="@label" aria-label="@label"></span>
+                        break;
+                }
+            }
+        }
+    </div>
+</div>

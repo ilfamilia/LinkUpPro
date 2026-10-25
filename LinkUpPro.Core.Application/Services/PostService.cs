@@ -367,6 +367,36 @@ namespace LinkUpPro.Core.Application.Services
             });
         }
 
+        // Loads full post data (metrics, embeds) only for the ids that remain visible to the user.
+        public async Task<ServiceResultWithData<List<PostDto>>> GetVisiblePostsByIdsAsync(IEnumerable<int> postIds, string userId)
+        {
+            return await ExecuteAsync<List<PostDto>>(async () =>
+            {
+                var visibleResult = await GetVisiblePostIdsAsync(postIds, userId);
+
+                if (!visibleResult.IsSuccess || visibleResult.Data == null)
+                {
+                    return ServiceResultWithData<List<PostDto>>.Failure(visibleResult.Status, visibleResult.Errors.ToArray());
+                }
+
+                HashSet<int> visibleIds = visibleResult.Data;
+
+                List<Post> posts = await _postRepository.GetAllQuery()
+                    .AsNoTracking()
+                    .Where(p => visibleIds.Contains(p.Id))
+                    .OrderByDescending(p => p.CreatedAt)
+                    .ToListAsync();
+
+                List<PostDto> postDtos = _mapper.Map<List<PostDto>>(posts);
+
+                await PopulatePostMetricsAsync(postDtos, userId);
+
+                PopulateYouTubeEmbedUrls(postDtos);
+
+                return ServiceResultWithData<List<PostDto>>.Success(postDtos);
+            });
+        }
+
         public async Task<ServiceResultWithData<List<PostDto>>> GetMyPostsAsync(string userId, PostFilterDto? filter = null)
         {
             return await ExecuteAsync<List<PostDto>>(async () =>

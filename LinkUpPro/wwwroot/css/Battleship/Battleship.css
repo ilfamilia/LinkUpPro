@@ -1,0 +1,229 @@
+/* Battleship boards: 12x12 grid with A-L / 1-12 coordinates, ship icons and clear hit/miss colors. */
+:root {
+    --bs-sea: #e8f1fb;
+    --bs-sea-line: #c7d9ee;
+    --bs-sea-icon: #8aa4c2;
+    --bs-ship: #5b6676;
+    --bs-hit: #dc3545;
+    --bs-miss: #198754;
+    --bs-target: #0d6efd;
+    --bs-ship-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M15 4h2v6h5l-1 3h-4v3h7l-1 3H8l-1-3h8v-3h-4l-1-3h5z'/%3E%3Cpath d='M2 20h28l-4 7H6z'/%3E%3C/svg%3E");
+}
+
+.bs-board-wrapper {
+    width: 100%;
+    max-width: 620px;
+    margin: 0 auto;
+}
+
+.bs-board-title {
+    text-align: center;
+    font-weight: 600;
+    margin-bottom: .5rem;
+}
+
+.bs-board {
+    display: grid;
+    grid-template-columns: 1.6rem repeat(12, minmax(0, 1fr));
+    gap: 3px;
+    padding: .5rem;
+    border-radius: .5rem;
+    background: #f8fafc;
+    border: 1px solid #dee2e6;
+}
+
+.bs-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .75rem;
+    font-weight: 600;
+    color: #6c757d;
+    user-select: none;
+}
+
+.bs-board form {
+    margin: 0;
+    min-width: 0;
+}
+
+.bs-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 1;
+    min-width: 0;
+    padding: 0;
+    border: 1px solid var(--bs-sea-line);
+    border-radius: 4px;
+    background: var(--bs-sea);
+    color: var(--bs-sea-icon);
+    text-decoration: none;
+    transition: transform .08s ease, box-shadow .08s ease, background-color .15s ease;
+}
+
+/* The ship silhouette follows the cell's text color, so every state recolors it automatically. */
+.bs-cell::after {
+    content: "";
+    width: 62%;
+    height: 62%;
+    background-color: currentColor;
+    -webkit-mask: var(--bs-ship-icon) center / contain no-repeat;
+    mask: var(--bs-ship-icon) center / contain no-repeat;
+}
+
+.bs-cell.is-ship {
+    background: var(--bs-ship);
+    border-color: #48515e;
+    color: #fff;
+}
+
+.bs-cell.is-hit {
+    background: var(--bs-hit);
+    border-color: #b02a37;
+    color: #fff;
+}
+
+.bs-cell.is-miss {
+    background: var(--bs-miss);
+    border-color: #146c43;
+    color: #fff;
+}
+
+.bs-cell.is-selected {
+    background: #fff3cd;
+    border: 2px solid var(--bs-hit);
+    color: #664d03;
+}
+
+a.bs-cell,
+button.bs-cell {
+    cursor: crosshair;
+}
+
+a.bs-cell:hover,
+button.bs-cell:hover {
+    transform: scale(1.08);
+    z-index: 1;
+    border-color: var(--bs-target);
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, .35);
+    color: var(--bs-target);
+}
+
+.bs-cell:focus-visible {
+    outline: 3px solid #212529;
+    outline-offset: 2px;
+}
+
+.bs-board.is-locked .bs-cell {
+    cursor: not-allowed;
+}
+
+/* Legend shown under every board. */
+.bs-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .75rem 1.25rem;
+    margin-top: .75rem;
+    font-size: .875rem;
+    color: #495057;
+}
+
+.bs-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+}
+
+.bs-legend .bs-swatch {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 3px;
+    border: 1px solid #ced4da;
+}
+
+.bs-swatch.is-water { background: var(--bs-sea); }
+.bs-swatch.is-ship { background: var(--bs-ship); }
+.bs-swatch.is-hit { background: var(--bs-hit); }
+.bs-swatch.is-miss { background: var(--bs-miss); }
+
+/* Ship picker: one row of blocks per ship size. */
+.bs-ship-blocks {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.bs-ship-blocks span {
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 3px;
+    background: var(--bs-ship);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bs-ship-blocks span::after {
+    content: "";
+    width: 70%;
+    height: 70%;
+    background-color: currentColor;
+    -webkit-mask: var(--bs-ship-icon) center / contain no-repeat;
+    mask: var(--bs-ship-icon) center / contain no-repeat;
+}
+
+.bs-ship-option {
+    cursor: pointer;
+}
+
+.bs-ship-option:has(input:checked) {
+    background: #e7f1ff;
+    border-color: #9ec5fe;
+}
+
+/* Direction picker with arrow cards. */
+.bs-direction-option {
+    cursor: pointer;
+    text-align: center;
+    padding: .75rem .5rem;
+    border: 1px solid #dee2e6;
+    border-radius: .5rem;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+
+.bs-direction-option .bs-arrow {
+    display: block;
+    font-size: 1.75rem;
+    line-height: 1;
+    margin-bottom: .25rem;
+}
+
+.bs-direction-option:has(input:checked) {
+    background: #e7f1ff;
+    border-color: var(--bs-target);
+}
+
+.bs-turn-banner {
+    border-left: 4px solid currentColor;
+}
+
+@media (max-width: 400px) {
+    .bs-board {
+        gap: 2px;
+        padding: .25rem;
+        grid-template-columns: 1.1rem repeat(12, minmax(0, 1fr));
+    }
+
+    .bs-label {
+        font-size: .6rem;
+    }
+}
+
+/* Hide the alert box when the validation summary has no errors. */
+.validation-summary-valid.alert {
+    display: none;
+}

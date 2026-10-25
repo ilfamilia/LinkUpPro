@@ -29,3 +29,17 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+/* Keep social avatars, encoded post text, and twelve-column boards readable on narrow screens. */
+.social-avatar { width: 48px; height: 48px; object-fit: cover; border-radius: 50%; margin-right: .5rem; }
+.social-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.battleship-board { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; width: 100%; max-width: 650px; }
+.battleship-board form { min-width: 0; margin: 0; }
+.board-cell { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 1; min-width: 0; border: 1px solid #94a3b8; border-radius: 3px; background: #f1f5f9; color: #0f172a; text-decoration: none; padding: 0; }
+.board-cell.ship { background: #1d4ed8; color: white; }
+.board-cell.hit { background: #b91c1c; color: white; }
+.board-cell.miss { background: #15803d; color: white; }
+button.board-cell:hover, a.board-cell:hover { outline: 2px solid #2563eb; }
+.board-cell:focus-visible { outline: 3px solid #0f172a; outline-offset: 2px; }
+
+.profile-image-lg { width: 96px; height: 96px; object-fit: cover; }
+.ship-option-icon { font-size: 1.25rem; letter-spacing: 2px; }

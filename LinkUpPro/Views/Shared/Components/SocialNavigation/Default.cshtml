@@ -1,0 +1,17 @@
+@model SocialNavigationViewModel
+@* Refreshes the four module links and their counters on ordinary page navigation. *@
+<li class="nav-item"><a class="nav-link text-dark" asp-controller="Friends" asp-action="Index">Amigos</a></li>
+<li class="nav-item">
+    <a class="nav-link text-dark" asp-controller="FriendshipRequests" asp-action="Index">
+        Solicitudes de amistad
+        @if (Model.PendingRequests > 0) { <span class="badge rounded-pill bg-danger">@Model.PendingRequests</span> }
+    </a>
+</li>
+<li class="nav-item">
+    <a class="nav-link text-dark" asp-controller="Notifications" asp-action="Index">
+        Notificaciones
+        @if (Model.UnreadNotifications > 0) { <span class="badge rounded-pill bg-danger">@Model.UnreadNotifications</span> }
+    </a>
+</li>
+<li class="nav-item"><a class="nav-link text-dark" asp-controller="Battleship" asp-action="Index">Battleship</a></li>
+<li class="nav-item"><a class="nav-link text-dark" asp-controller="Profile" asp-action="Index">Mi perfil</a></li>

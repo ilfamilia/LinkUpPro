@@ -22,6 +22,101 @@ namespace LinkUpPro.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("LinkUpPro.Core.Domain.Entities.Attack", b =>
+                {
+                    b.Property<int>("GameId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<int>("Row")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Column")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsHit")
+                        .HasColumnType("bit");
+
+                    b.HasKey("GameId", "UserId", "Row", "Column");
+
+                    b.ToTable("Attacks", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Attacks_Coordinates", "[Row] BETWEEN 0 AND 11 AND [Column] BETWEEN 0 AND 11");
+                        });
+                });
+
+            modelBuilder.Entity("LinkUpPro.Core.Domain.Entities.BattleshipGame", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatorUserId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<int?>("EndReason")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("TurnAssignedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TurnUserId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("User1Id")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<string>("User2Id")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("WinnerUserId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("User1Id", "User2Id")
+                        .IsUnique()
+                        .HasFilter("[Status] <> 2");
+
+                    b.ToTable("BattleshipGames", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BattleshipGames_Creator", "[CreatorUserId] IN ([User1Id], [User2Id])");
+
+                            t.HasCheckConstraint("CK_BattleshipGames_State", "([Status] = 0 AND [TurnUserId] IS NULL AND [TurnAssignedAt] IS NULL AND [CompletedAt] IS NULL AND [WinnerUserId] IS NULL AND [EndReason] IS NULL) OR ([Status] = 1 AND [TurnUserId] IN ([User1Id], [User2Id]) AND [TurnUserId] IS NOT NULL AND [TurnAssignedAt] IS NOT NULL AND [CompletedAt] IS NULL AND [WinnerUserId] IS NULL AND [EndReason] IS NULL) OR ([Status] = 2 AND [TurnUserId] IS NULL AND [TurnAssignedAt] IS NULL AND [CompletedAt] IS NOT NULL AND [WinnerUserId] IN ([User1Id], [User2Id]) AND [WinnerUserId] IS NOT NULL AND [EndReason] IN (0, 1, 2) AND [EndReason] IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_BattleshipGames_UserOrder", "[User1Id] COLLATE Latin1_General_100_BIN2 < [User2Id] COLLATE Latin1_General_100_BIN2");
+                        });
+                });
+
             modelBuilder.Entity("LinkUpPro.Core.Domain.Entities.Comment", b =>
                 {
                     b.Property<int>("Id")
@@ -305,6 +400,49 @@ namespace LinkUpPro.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("LinkUpPro.Core.Domain.Entities.ShipPlacement", b =>
+                {
+                    b.Property<int>("GameId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<int>("ShipNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Column")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Direction")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Row")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Size")
+                        .HasColumnType("int");
+
+                    b.HasKey("GameId", "UserId", "ShipNumber");
+
+                    b.ToTable("ShipPlacements", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ShipPlacements_Coordinates", "[Row] BETWEEN 0 AND 11 AND [Column] BETWEEN 0 AND 11 AND [Direction] BETWEEN 0 AND 3");
+
+                            t.HasCheckConstraint("CK_ShipPlacements_Fleet", "([ShipNumber] = 0 AND [Size] = 2) OR ([ShipNumber] IN (1, 2) AND [Size] = 3) OR ([ShipNumber] = 3 AND [Size] = 4) OR ([ShipNumber] = 4 AND [Size] = 5)");
+                        });
+                });
+
+            modelBuilder.Entity("LinkUpPro.Core.Domain.Entities.Attack", b =>
+                {
+                    b.HasOne("LinkUpPro.Core.Domain.Entities.BattleshipGame", null)
+                        .WithMany("Attacks")
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("LinkUpPro.Core.Domain.Entities.Comment", b =>
                 {
                     b.HasOne("LinkUpPro.Core.Domain.Entities.Comment", "ParentComment")
@@ -349,6 +487,22 @@ namespace LinkUpPro.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("LinkUpPro.Core.Domain.Entities.ShipPlacement", b =>
+                {
+                    b.HasOne("LinkUpPro.Core.Domain.Entities.BattleshipGame", null)
+                        .WithMany("Ships")
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LinkUpPro.Core.Domain.Entities.BattleshipGame", b =>
+                {
+                    b.Navigation("Attacks");
+
+                    b.Navigation("Ships");
                 });
 
             modelBuilder.Entity("LinkUpPro.Core.Domain.Entities.Comment", b =>

@@ -9,9 +9,12 @@
     string? currentUserId = ViewData["CurrentUserId"]?.ToString();
 
     string returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}#comments-{Model.PostId}";
+
+    // Only current friends' names link to their profile; seeing a comment grants no profile access.
+    bool linkToProfile = ViewData["FriendIds"] is HashSet<string> friendIds && friendIds.Contains(Model.UserId);
 }
 
-<div class="border-start ps-3 mb-3">
+<div id="comment-@Model.Id" class="border-start ps-3 mb-3">
     @if (Model.IsDeleted)
     {
         <p class="text-muted fst-italic">
@@ -29,7 +32,14 @@
                  class="comment-avatar rounded-circle me-2" />
 
             <div>
-                <div class="fw-semibold">@Model.UserName</div>
+                @if (linkToProfile)
+                {
+                    <a asp-controller="Friends" asp-action="Profile" asp-route-id="@Model.UserId" class="fw-semibold d-block">@Model.UserName</a>
+                }
+                else
+                {
+                    <div class="fw-semibold">@Model.UserName</div>
+                }
 
                 <small class="text-muted">
                     @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC

@@ -16,6 +16,8 @@ namespace LinkUpPro.Infrastructure.Identity
         public static void AddIdentityLayerIocForWebApp(this IServiceCollection services, IConfiguration config)
         {
             GeneralConfiguration(services, config);
+            // Publish account summaries without exposing Identity entities to Application.
+            services.AddScoped<LinkUpPro.Core.Application.Interfaces.IUserDirectoryService, LinkUpPro.Infrastructure.Identity.Services.UserDirectoryService>();
 
             #region Identity
             services.Configure<IdentityOptions>(opt => 
@@ -100,6 +102,16 @@ namespace LinkUpPro.Infrastructure.Identity
                     return Task.CompletedTask;
                 };
 
+                // Tell the login page why the user arrived: an existing session that expired (inactivity)
+                // or an anonymous visit to a protected page.
+                opt.Events.OnRedirectToLogin = context =>
+                {
+                    string cookieName = context.Options.Cookie.Name ?? ".AspNetCore.Identity.Application";
+                    string reason = context.Request.Cookies.ContainsKey(cookieName) ? "timeout" : "required";
+                    context.Response.Redirect(Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(context.RedirectUri, "reason", reason));
+                    return Task.CompletedTask;
+                };
+
                 opt.Events.OnValidatePrincipal = async context =>
                 {
                     await SecurityStampValidator.ValidatePrincipalAsync(context);
@@ -113,6 +125,7 @@ namespace LinkUpPro.Infrastructure.Identity
             });
 
             services.AddAuthorization();
+            services.AddMemoryCache();
             services.AddScoped<IAccountServiceForWebApp, AccountServiceForWebApp>();
             #endregion
 
@@ -139,7 +152,6 @@ namespace LinkUpPro.Infrastructure.Identity
 
                     (serviceProvider, opt) =>
                     {
-                        opt.EnableSensitiveDataLogging();
                         opt.UseSqlServer(connectionString, sql =>
                         {
                             sql.MigrationsAssembly(typeof(IdentityContext).Assembly.FullName);

@@ -1,0 +1,22 @@
+@model GameActionViewModel
+@* Confirms surrender while preserving the expected game version for the final POST. *@
+@{
+    ViewData["Title"] = "Rendirse";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">Rendirse</h2>
+    <div class="card">
+        <div class="card-body">
+            <p>¿Está seguro que desea rendirse?</p>
+            <form asp-controller="Battleship" asp-action="Surrender" method="post">
+                <input asp-for="Id" type="hidden" />
+                <input asp-for="Version" type="hidden" />
+                <div class="d-flex gap-2">
+                    <a asp-controller="Battleship" asp-action="Game" asp-route-id="@Model.Id" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-danger">Aceptar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

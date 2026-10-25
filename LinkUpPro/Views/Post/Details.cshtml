@@ -1,0 +1,26 @@
+@model PostCardViewModel
+
+@{
+    ViewData["Title"] = "Publicación";
+}
+
+@section Styles
+{
+    <link rel="stylesheet" href="~/css/Home/Index.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Comment/Comments.css" asp-append-version="true" />
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">Publicación</h2>
+
+    <partial name="_PostCard" model="Model" />
+
+    <div class="d-flex gap-2">
+        <a asp-controller="Notifications" asp-action="Index" class="btn btn-secondary">Volver a notificaciones</a>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Ir al Home</a>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

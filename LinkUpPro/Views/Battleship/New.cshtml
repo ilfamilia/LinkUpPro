@@ -1,0 +1,67 @@
+@model NewGameViewModel
+@* Selects one currently eligible friend; creation repeats all checks on the server. *@
+@{
+    ViewData["Title"] = "Nueva partida";
+}
+
+@section Styles
+{
+    <link rel="stylesheet" href="~/css/Home/Index.css" asp-append-version="true" />
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">Nueva partida de Battleship</h2>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Buscar amigos</h5>
+            <form asp-controller="Battleship" asp-action="New" method="get">
+                <div class="row g-3">
+                    <div class="col-12 col-md-8">
+                        <label for="search" class="form-label">Nombre de usuario</label>
+                        <input id="search" name="search" value="@Model.Search" class="form-control" placeholder="Buscar por nombre de usuario" />
+                    </div>
+                    <div class="col-12 col-md-4 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary">Buscar</button>
+                        <a asp-controller="Battleship" asp-action="New" class="btn btn-secondary">Limpiar búsqueda</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form asp-controller="Battleship" asp-action="New" method="post">
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+                <input asp-for="Search" type="hidden" />
+
+                @if (Model.Candidates.Count == 0)
+                {
+                    <p class="text-muted">No hay amigos disponibles para iniciar una partida.</p>
+                }
+                else
+                {
+                    <ul class="list-group mb-3">
+                        @foreach (var user in Model.Candidates)
+                        {
+                            <li class="list-group-item d-flex align-items-center gap-3">
+                                <input type="radio" asp-for="OpponentId" value="@user.Id" id="opponent-@user.Id" class="form-check-input mt-0" />
+                                <label for="opponent-@user.Id" class="d-flex align-items-center gap-3 flex-grow-1 mb-0">
+                                    <img src="@SocialDisplay.ImageUrl(Url, user.ProfilePicturePath)" alt="Foto de perfil de @user.UserName"
+                                         class="post-profile-image rounded-circle" />
+                                    <span class="fw-semibold">@user.UserName</span>
+                                </label>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                <div class="d-flex gap-2">
+                    <a asp-controller="Battleship" asp-action="Index" class="btn btn-secondary">Volver atrás</a>
+                    <button type="submit" class="btn btn-primary" disabled="@(Model.Candidates.Count == 0)">Iniciar partida</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

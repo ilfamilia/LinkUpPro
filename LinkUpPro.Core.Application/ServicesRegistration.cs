@@ -17,6 +17,13 @@ namespace LinkUpPro.Core.Application
             services.AddScoped<ICommentService, CommentService>();
             services.AddScoped<IPostService, PostService>();
             services.AddScoped<IReactionService, ReactionService>();
+            // Register module use cases and a replaceable clock for deterministic time-based tests.
+            services.AddSingleton(TimeProvider.System);
+            services.AddScoped<Services.SocialUserGuard>();
+            services.AddScoped<Interfaces.IFriendshipService, Services.FriendshipService>();
+            services.AddScoped<Interfaces.IFriendshipRequestService, Services.FriendshipRequestService>();
+            services.AddScoped<Interfaces.INotificationService, Services.NotificationService>();
+            services.AddScoped<Interfaces.IBattleshipService, Services.BattleshipService>();
             #endregion
         }
     }

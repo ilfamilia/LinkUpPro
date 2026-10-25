@@ -16,14 +16,19 @@ namespace LinkUpPro.Core.Application.Services
         private readonly IPostService _postService;
         private readonly IUserAccountStatusService _userAccountStatusService;
         private readonly IMapper _mapper;
+        private readonly INotificationService _notificationService;
+        private readonly IAtomicOperation _atomicOperation;
 
         public CommentService(ICommentRepository commentRepository, IPostService postService,
-            IUserAccountStatusService userAccountStatusService, IMapper mapper)
+            IUserAccountStatusService userAccountStatusService, IMapper mapper,
+            INotificationService notificationService, IAtomicOperation atomicOperation)
         {
             _commentRepository = commentRepository;
             _postService = postService;
             _userAccountStatusService = userAccountStatusService;
             _mapper = mapper;
+            _notificationService = notificationService;
+            _atomicOperation = atomicOperation;
         }
 
         public async Task<ServiceResult> AddAsync(CreateCommentDto dto)
@@ -102,7 +107,13 @@ namespace LinkUpPro.Core.Application.Services
                 comment.UpdatedAt = null;
                 comment.IsDeleted = false;
 
-                await _commentRepository.AddAsync(comment);
+                // The comment and its notification are committed together or not at all.
+                await _atomicOperation.ExecuteAsync(async () =>
+                {
+                    await _commentRepository.AddAsync(comment);
+                    await _notificationService.NotifyCommentAsync(comment.Id);
+                    return true;
+                });
 
                 return ServiceResult.Success();
             });

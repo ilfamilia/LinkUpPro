@@ -1,0 +1,45 @@
+@model GameDetailsViewModel
+@* Allows navigation from free starting cells and makes already occupied cells noninteractive. *@
+@{
+    ViewData["Title"] = "Seleccionar celda";
+    var sizes = new[] { 2, 3, 3, 4, 5 };
+    var board = BoardViewModel.Create("Mi tablero", Model.Id, Model.Version, (row, column) =>
+        Model.OwnShipCells.Any(c => c.Row == row && c.Column == column)
+            ? (BoardCellState.Ship, BoardCellMode.None, null)
+            : (BoardCellState.Water, BoardCellMode.Link,
+                Url.Action("Direction", "Battleship", new { id = Model.Id, shipNumber = Model.SelectedShipNumber, row, column })));
+}
+
+@section Styles
+{
+    <link rel="stylesheet" href="~/css/Battleship/Battleship.css" asp-append-version="true" />
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">Seleccione la celda inicial</h2>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                <span class="bs-ship-blocks" aria-hidden="true">
+                    @for (var i = 0; i < sizes[Model.SelectedShipNumber]; i++) { <span></span> }
+                </span>
+                <span>
+                    <span class="fw-semibold">Barco @(Model.SelectedShipNumber + 1)</span>
+                    <small class="text-muted d-block">@sizes[Model.SelectedShipNumber] posiciones · haga clic en la celda donde comenzará el barco</small>
+                </span>
+            </div>
+
+            <partial name="_Board" model="board" />
+
+            <div class="bs-legend">
+                <span><i class="bs-swatch is-water"></i> Celda libre</span>
+                <span><i class="bs-swatch is-ship"></i> Ocupada (no seleccionable)</span>
+            </div>
+
+            <div class="mt-4">
+                <a asp-controller="Battleship" asp-action="Game" asp-route-id="@Model.Id" class="btn btn-secondary">Volver atrás</a>
+            </div>
+        </div>
+    </div>
+</div>

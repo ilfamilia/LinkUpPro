@@ -14,6 +14,8 @@ namespace LinkUpPro.Infrastructure.Persistence.Contexts
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<Post> Posts { get; set; }
         public DbSet<Reaction> Reactions { get; set; }
+        // Games own the persisted fleets and attack logs used by the Battleship module.
+        public DbSet<BattleshipGame> BattleshipGames { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

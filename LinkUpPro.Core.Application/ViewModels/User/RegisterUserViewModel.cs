@@ -1,41 +1,41 @@
 using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
-
 namespace LinkUpPro.Core.Application.ViewModels.User
 {
-    public class RegisterUserViewModel //a
+    public class RegisterUserViewModel
     {
-        [Required(ErrorMessage = "You must enter the name of user")]
-        [DataType(DataType.Text)]
-        public required string Name { get; set; }
+        [Required(ErrorMessage = "Debe ingresar su nombre.")]
+        [StringLength(100, ErrorMessage = "El nombre no puede superar los 100 caracteres.")]
+        public string Name { get; set; } = "";
 
-        [Required(ErrorMessage = "You must enter the last name of user")]
-        [DataType(DataType.Text)]
-        public required string LastName { get; set; }
+        [Required(ErrorMessage = "Debe ingresar su apellido.")]
+        [StringLength(100, ErrorMessage = "El apellido no puede superar los 100 caracteres.")]
+        public string LastName { get; set; } = "";
 
-        [Required(ErrorMessage = "You must enter the phone of user")]    
-        [DataType(DataType.Text)]
-        public string? Phone { get; set; }        
+        [Required(ErrorMessage = "Debe ingresar su teléfono.")]
+        [RegularExpression(AccountValidation.PhonePattern, ErrorMessage = AccountValidation.PhoneMessage)]
+        public string Phone { get; set; } = "";
 
-        [Required(ErrorMessage = "You must enter the email of user")]
-        [DataType(DataType.EmailAddress)]
-        public required string Email { get; set; }
+        [Required(ErrorMessage = "Debe ingresar su correo electrónico.")]
+        [EmailAddress(ErrorMessage = "Debe ingresar un correo electrónico válido.")]
+        public string Email { get; set; } = "";
 
-        [Required(ErrorMessage = "You must enter the profile image of user")]
+        [Required(ErrorMessage = "Debe seleccionar una foto de perfil.")]
         [DataType(DataType.Upload)]
-        public required IFormFile ProfileImageFile { get; set; }
+        public IFormFile? ProfileImageFile { get; set; }
 
-        [Required(ErrorMessage = "You must enter the username of user")]
-        [DataType(DataType.Text)]
-        public required string UserName { get; set; }
+        [Required(ErrorMessage = "Debe ingresar un nombre de usuario.")]
+        [StringLength(50, ErrorMessage = "El nombre de usuario no puede superar los 50 caracteres.")]
+        public string UserName { get; set; } = "";
 
-        [Required(ErrorMessage = "You must enter the password of user")]
+        [Required(ErrorMessage = "Debe ingresar una contraseña.")]
+        [RegularExpression(AccountValidation.PasswordPattern, ErrorMessage = AccountValidation.PasswordMessage)]
         [DataType(DataType.Password)]
-        public required string Password { get; set; }
+        public string Password { get; set; } = "";
 
-        [Compare(nameof(Password),ErrorMessage = "Password must match")]
-        [Required(ErrorMessage = "You must enter the confirm password")]
+        [Required(ErrorMessage = "Debe confirmar la contraseña.")]
+        [Compare(nameof(Password), ErrorMessage = "La contraseña y su confirmación no coinciden.")]
         [DataType(DataType.Password)]
-        public required string ConfirmPassword { get; set; }
+        public string ConfirmPassword { get; set; } = "";
     }
 }

@@ -1,22 +1,22 @@
 using System.ComponentModel.DataAnnotations;
-
 namespace LinkUpPro.Core.Application.ViewModels.User
 {
     public class ResetPasswordRequestViewModel
     {
         [Required]
-        [DataType(DataType.Text)]
-        public required string Id { get; set; }
+        public string Id { get; set; } = "";
 
         [Required]
-        [DataType(DataType.Text)]
-        public required string Token { get; set; }
+        public string Token { get; set; } = "";
 
+        [Required(ErrorMessage = "Debe ingresar la nueva contraseña.")]
+        [RegularExpression(AccountValidation.PasswordPattern, ErrorMessage = AccountValidation.PasswordMessage)]
         [DataType(DataType.Password)]
-        public required string Password { get; set; }
+        public string Password { get; set; } = "";
 
-        [Compare(nameof(Password), ErrorMessage = "Password must match")]
+        [Required(ErrorMessage = "Debe confirmar la nueva contraseña.")]
+        [Compare(nameof(Password), ErrorMessage = "La contraseña y su confirmación no coinciden.")]
         [DataType(DataType.Password)]
-        public string? ConfirmPassword { get; set; }
+        public string ConfirmPassword { get; set; } = "";
     }
 }

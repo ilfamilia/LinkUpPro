@@ -151,5 +151,14 @@ namespace LinkUpPro.Controllers
                 }
             }
         }
+
+        /// <summary>Returns a safe production error for failed requests without disclosing technical details.</summary>
+        [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+        public IActionResult Error()
+        {
+            Response.StatusCode = 500;
+            return View("~/Views/Shared/SocialError.cshtml", new LinkUpPro.ViewModels.Social.SocialErrorViewModel
+                { Message = "Ocurrió un error al procesar la solicitud. Inténtelo nuevamente." });
+        }
     }
 }

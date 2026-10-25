@@ -11,11 +11,16 @@ namespace LinkUpPro.Core.Application.Services
     {
         private readonly IReactionRepository _reactionRepository;
         private readonly IPostService _postService;
+        private readonly INotificationService _notificationService;
+        private readonly IAtomicOperation _atomicOperation;
 
-        public ReactionService(IReactionRepository reactionRepository, IPostService postService)
+        public ReactionService(IReactionRepository reactionRepository, IPostService postService,
+            INotificationService notificationService, IAtomicOperation atomicOperation)
         {
             _reactionRepository = reactionRepository;
             _postService = postService;
+            _notificationService = notificationService;
+            _atomicOperation = atomicOperation;
         }
 
         public async Task<ServiceResult> ToggleReactionAsync(int postId, string userId, ReactionType reactionType)
@@ -64,7 +69,13 @@ namespace LinkUpPro.Core.Application.Services
                         Type = reactionType
                     };
 
-                    await _reactionRepository.AddAsync(newReaction);
+                    // Registering a reaction notifies the post author in the same transaction.
+                    await _atomicOperation.ExecuteAsync(async () =>
+                    {
+                        await _reactionRepository.AddAsync(newReaction);
+                        await _notificationService.NotifyReactionAsync(postId);
+                        return true;
+                    });
 
                     return ServiceResult.Success();
                 }
@@ -79,7 +90,18 @@ namespace LinkUpPro.Core.Application.Services
 
                 reaction.Type = reactionType;
 
-                Reaction? updatedReaction = await _reactionRepository.UpdateAsync(reaction, userId, postId);
+                // Changing the reaction also notifies; removing it (above) never does.
+                Reaction? updatedReaction = await _atomicOperation.ExecuteAsync(async () =>
+                {
+                    Reaction? updated = await _reactionRepository.UpdateAsync(reaction, userId, postId);
+
+                    if (updated != null)
+                    {
+                        await _notificationService.NotifyReactionAsync(postId);
+                    }
+
+                    return updated;
+                });
 
                 return updatedReaction != null ? ServiceResult.Success() : ServiceResult.Failure(OperationStatus.Conflict,
                         "No se pudo actualizar la reacción");

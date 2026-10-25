@@ -1,0 +1,122 @@
+@model BattleshipIndexViewModel
+@* Separates resumable games from read-only history and derives caller-specific win/loss totals. *@
+@{
+    ViewData["Title"] = "Battleship";
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">Battleship</h2>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h5 class="card-title mb-0">Partidas activas</h5>
+                <a asp-controller="Battleship" asp-action="New" class="btn btn-primary">Iniciar nueva partida</a>
+            </div>
+
+            @if (Model.Active.Count == 0)
+            {
+                <p class="text-muted mb-0">No tiene partidas activas.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Oponente</th>
+                                <th>Fecha de inicio</th>
+                                <th>Duración (horas)</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var game in Model.Active)
+                            {
+                                <tr>
+                                    <td>@game.Opponent.UserName</td>
+                                    <td>@game.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC</td>
+                                    <td>@game.DurationHours.ToString("F2")</td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <a asp-controller="Battleship" asp-action="Game" asp-route-id="@game.Id" class="btn btn-outline-primary btn-sm">Entrar a la partida</a>
+                                            <a asp-controller="Battleship" asp-action="ConfirmSurrender" asp-route-id="@game.Id" class="btn btn-outline-danger btn-sm">Rendirse</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Historial de partidas</h5>
+
+            <div class="row g-3 mb-3">
+                <div class="col-12 col-md-4">
+                    <div class="border rounded p-3 h-100">
+                        <h6 class="text-muted mb-1">Partidas jugadas</h6>
+                        <p class="fs-4 fw-semibold mb-0">@Model.History.Count</p>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="border rounded p-3 h-100">
+                        <h6 class="text-muted mb-1">Ganadas</h6>
+                        <p class="fs-4 fw-semibold text-success mb-0">@Model.Wins</p>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="border rounded p-3 h-100">
+                        <h6 class="text-muted mb-1">Perdidas</h6>
+                        <p class="fs-4 fw-semibold text-danger mb-0">@Model.Losses</p>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.History.Count == 0)
+            {
+                <p class="text-muted mb-0">Todavía no tiene partidas finalizadas.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Oponente</th>
+                                <th>Inicio</th>
+                                <th>Finalización</th>
+                                <th>Duración (horas)</th>
+                                <th>Resultado</th>
+                                <th>Ganador</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var game in Model.History)
+                            {
+                                <tr>
+                                    <td>@game.Opponent.UserName</td>
+                                    <td>@game.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC</td>
+                                    <td>@game.CompletedAt?.ToString("dd/MM/yyyy HH:mm") UTC</td>
+                                    <td>@game.DurationHours.ToString("F2")</td>
+                                    <td>
+                                        <span class="badge @(game.IsWinner ? "bg-success" : "bg-danger")">@(game.IsWinner ? "Ganada" : "Perdida")</span>
+                                    </td>
+                                    <td>@(game.IsWinner ? "Yo" : game.WinnerUserName)</td>
+                                    <td>
+                                        <a asp-controller="Battleship" asp-action="Game" asp-route-id="@game.Id" class="btn btn-outline-primary btn-sm">Ver resultado</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

@@ -9,5 +9,6 @@ namespace LinkUpPro.Core.Domain.Entities
         public required string User2Id { get; set; }
 
         public required FriendshipStatus Status { get; set; }
+    
     }
 }
