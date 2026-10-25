@@ -1,9 +1,20 @@
+<<<<<<< HEAD
 using AutoMapper;
 using LinkUpPro.Core.Application.Dtos.User;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.ViewModels.User;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+=======
+using LinkUpPro.Core.Application.Interfaces;
+using LinkUpPro.Core.Application.Dtos.User;
+using LinkUpPro.Core.Application.Helpers;
+using LinkUpPro.Infrastructure.Identity.Entities;
+using LinkUpPro.Core.Application.ViewModels.User;
+using AutoMapper;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
+>>>>>>> def86ca (Validacion de token resuelto)
 
 namespace LinkUpPro.Controllers
 {
@@ -205,6 +216,7 @@ namespace LinkUpPro.Controllers
             {
                 return View(vm);
             }
+<<<<<<< HEAD
 
             UserResponseDto response = await _accountServiceForWebApp.ResendEmailActivationAsync(
                 _mapper.Map<EmailConfirmationDto>(vm), Origin);
@@ -217,6 +229,42 @@ namespace LinkUpPro.Controllers
 
             TempData["LoginSuccess"] = response.Message;
             return RedirectToAction(nameof(Index));
+=======
+    
+            RegisterUserDto registerUserDto = _mapper.Map<RegisterUserDto>(vm);
+            registerUserDto.ProfileImage = FileManager.Upload(vm.ProfileImageFile, registerUserDto.Id, "Users");
+
+            string origin = Request?.Headers?.Origin.ToString() ?? string.Empty;
+            RegisterResponseDto? registerUserResponse = await _accountServiceForWebApp.RegisterUserAsync(registerUserDto, origin);
+
+            if (registerUserResponse.HasError)
+            {//
+                ViewBag.HasError = true;
+                ViewBag.Errors = registerUserResponse.Errors;
+                return View(vm);
+            }
+            return RedirectToRoute(new { controller = "Login", action = "Index" });
+        }
+        
+        public async Task<ActionResult> ResendEmailActivation()
+        {
+            return View();
+        }
+        
+        [HttpPost]
+        public async Task<ActionResult> ResendEmailActivation(EmailConfirmationViewModel vm)
+        {
+            EmailConfirmationDto dto = new() { UserName = vm.UserName }; //a
+            string origin = Request?.Headers?.Origin.ToString() ?? string.Empty;
+            await _accountServiceForWebApp.ResendEmailActivationAsync(dto, origin);
+            return RedirectToRoute(new { controller = "Login", action = "Index" });
+        }
+
+        public async Task<IActionResult> ConfirmEmail(string userId,string token)
+        {
+            string response = await _accountServiceForWebApp.ConfirmAccountAsync(userId, token);           
+            return View("ConfirmEmail", response); //
+>>>>>>> def86ca (Validacion de token resuelto)
         }
 
         [AllowAnonymous]

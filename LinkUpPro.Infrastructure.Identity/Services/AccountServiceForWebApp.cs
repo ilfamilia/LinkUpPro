@@ -2,6 +2,7 @@ using LinkUpPro.Core.Application.Dtos.Email;
 using LinkUpPro.Core.Application.Dtos.User;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Infrastructure.Identity.Entities;
+using LinkUpPro.Core.Application.Dtos.Email;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
@@ -33,11 +34,16 @@ namespace LinkUpPro.Infrastructure.Identity.Services
         private readonly UserManager<AppUser> _userManager;
         private readonly SignInManager<AppUser> _signInManager;
         private readonly IEmailService _emailService;
+<<<<<<< HEAD
         private readonly IMemoryCache _cache;
         private readonly ILogger<AccountServiceForWebApp> _logger;
 
         public AccountServiceForWebApp(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager,
             IEmailService emailService, IMemoryCache cache, ILogger<AccountServiceForWebApp> logger)
+=======
+        
+        public AccountServiceForWebApp(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IEmailService emailService)
+>>>>>>> def86ca (Validacion de token resuelto)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -164,6 +170,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
                 response.Errors.AddRange(result.Errors.Select(e => TranslateIdentityError(e)));
                 return response;
             }
+<<<<<<< HEAD
 
             await SendActivationEmailAsync(user, origin);
 
@@ -175,6 +182,18 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             response.IsVerified = false;
 
             return response;
+=======
+            token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+            if (result.Succeeded)
+            {
+                return $"Cuenta confirmada para {user.Email}. Ahora puede iniciar sesión.";
+            }
+            else
+            {
+                return $"Ocurrio un error al confirmar el correo {user.Email}";
+            }
+>>>>>>> def86ca (Validacion de token resuelto)
         }
 
         public async Task<UserResponseDto> ConfirmAccountAsync(string userId, string token)
@@ -434,6 +453,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
 
             return (await users.ToListAsync()).Select(ToDto).ToList();
         }
+<<<<<<< HEAD
 
         public async Task<UserDto?> GetUserByUserNameAsync(string userName)
         {
@@ -557,5 +577,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
         };
 
         #endregion
+=======
+>>>>>>> def86ca (Validacion de token resuelto)
     }
 }

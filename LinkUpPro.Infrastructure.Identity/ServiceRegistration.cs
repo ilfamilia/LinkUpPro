@@ -63,7 +63,6 @@ namespace LinkUpPro.Infrastructure.Identity
                 opt.Name = "LinkUpPro.EmailConfirmation";
                 opt.TokenLifespan = TimeSpan.FromHours(24);
             });
-
             // Security Stamp Configuration
             services.Configure<SecurityStampValidatorOptions>(opt =>
             {
@@ -78,7 +77,6 @@ namespace LinkUpPro.Infrastructure.Identity
             }).AddCookie(IdentityConstants.ApplicationScheme, opt => 
             {
                 opt.LoginPath = "/Login";
-                opt.AccessDeniedPath = "/Login/AccessDenied";
 
                 // Normal session
                 opt.ExpireTimeSpan = TimeSpan.FromMinutes(30);
