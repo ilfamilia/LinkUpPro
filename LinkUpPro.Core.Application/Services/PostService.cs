@@ -6,25 +6,23 @@ using LinkUpPro.Core.Application.Results;
 using LinkUpPro.Core.Domain.Entities;
 using LinkUpPro.Core.Domain.Enums;
 using LinkUpPro.Core.Domain.Interfaces;
-using Microsoft.EntityFrameworkCore;
+using LinkUpPro.Core.Domain.Queries;
 
 namespace LinkUpPro.Core.Application.Services
 {
     public class PostService : BaseService, IPostService
     {
         private readonly IPostRepository _postRepository;
-        private readonly IFriendshipRepository _friendshipRepository;
         private readonly IReactionRepository _reactionRepository;
         private readonly ICommentRepository _commentRepository;
         private readonly IUserAccountStatusService _userAccountStatusService;
         private readonly IMapper _mapper;
 
-        public PostService(IPostRepository postRepository, IMapper mapper, IFriendshipRepository friendshipRepository, 
+        public PostService(IPostRepository postRepository, IMapper mapper,
             IReactionRepository reactionRepository, ICommentRepository commentRepository,
             IUserAccountStatusService userAccountStatusService)
         {
             _postRepository = postRepository;
-            _friendshipRepository = friendshipRepository;
             _reactionRepository = reactionRepository;
             _commentRepository = commentRepository;
             _mapper = mapper;
@@ -229,9 +227,7 @@ namespace LinkUpPro.Core.Application.Services
                         "El ID de la publicación es inválido");
                 }
 
-                Post? post = await _postRepository.GetAllQuery()
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+                Post? post = await _postRepository.GetActiveByIdAsync(postId);
 
                 if (post == null)
                 {
@@ -267,22 +263,7 @@ namespace LinkUpPro.Core.Application.Services
                         "El ID de la publicación es inválido");
                 }
 
-                var friendshipsQuery = _friendshipRepository.GetAllQuery()
-                    .Where(f => f.Status == FriendshipStatus.Active &&
-                        (f.User1Id == userId || f.User2Id == userId));
-
-                Post? post = await _postRepository.GetAllQuery()
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted &&
-                        (
-                            p.UserId == userId ||
-                            (
-                                p.Privacy == PostPrivacy.FriendsOnly &&
-                                friendshipsQuery.Any(f =>
-                                    (f.User1Id == userId && f.User2Id == p.UserId) ||
-                                    (f.User2Id == userId && f.User1Id == p.UserId))
-                            )
-                        ));
+                Post? post = await _postRepository.GetVisibleByIdAsync(postId, userId);
 
                 if (post == null)
                 {
@@ -336,24 +317,7 @@ namespace LinkUpPro.Core.Application.Services
                         "La cuenta del usuario no está activa");
                 }
 
-                var friendshipsQuery = _friendshipRepository.GetAllQuery()
-                    .Where(f => f.Status == FriendshipStatus.Active &&
-                        (f.User1Id == userId || f.User2Id == userId));
-
-                var posts = await _postRepository.GetAllQuery()
-                    .AsNoTracking()
-                    .Where(p => ids.Contains(p.Id) && !p.IsDeleted &&
-                        (
-                            p.UserId == userId ||
-                            (
-                                p.Privacy == PostPrivacy.FriendsOnly &&
-                                friendshipsQuery.Any(f =>
-                                    (f.User1Id == userId && f.User2Id == p.UserId) ||
-                                    (f.User2Id == userId && f.User1Id == p.UserId))
-                            )
-                        ))
-                    .Select(p => new { p.Id, p.UserId })
-                    .ToListAsync();
+                List<Post> posts = await _postRepository.GetVisibleByIdsAsync(ids, userId);
 
                 HashSet<string> activeUserIds = await _userAccountStatusService
                     .GetActiveUserIdsAsync(posts.Select(p => p.UserId));
@@ -372,20 +336,32 @@ namespace LinkUpPro.Core.Application.Services
         {
             return await ExecuteAsync<List<PostDto>>(async () =>
             {
-                var visibleResult = await GetVisiblePostIdsAsync(postIds, userId);
-
-                if (!visibleResult.IsSuccess || visibleResult.Data == null)
+                if (string.IsNullOrWhiteSpace(userId))
                 {
-                    return ServiceResultWithData<List<PostDto>>.Failure(visibleResult.Status, visibleResult.Errors.ToArray());
+                    return ServiceResultWithData<List<PostDto>>.Failure(OperationStatus.Unauthorized,
+                        "El usuario no está autenticado");
                 }
 
-                HashSet<int> visibleIds = visibleResult.Data;
+                int[] ids = postIds.Distinct().ToArray();
 
-                List<Post> posts = await _postRepository.GetAllQuery()
-                    .AsNoTracking()
-                    .Where(p => visibleIds.Contains(p.Id))
-                    .OrderByDescending(p => p.CreatedAt)
-                    .ToListAsync();
+                if (ids.Any(id => id <= 0))
+                {
+                    return ServiceResultWithData<List<PostDto>>.Failure(OperationStatus.ValidationError,
+                        "Los identificadores de las publicaciones son inválidos");
+                }
+
+                if (!await _userAccountStatusService.IsUserActiveAsync(userId))
+                {
+                    return ServiceResultWithData<List<PostDto>>.Failure(OperationStatus.Forbidden,
+                        "La cuenta del usuario no está activa");
+                }
+
+                List<Post> posts = await _postRepository.GetVisibleByIdsAsync(ids, userId);
+
+                HashSet<string> activeUserIds = await _userAccountStatusService
+                    .GetActiveUserIdsAsync(posts.Select(p => p.UserId));
+
+                posts = posts.Where(p => activeUserIds.Contains(p.UserId)).ToList();
 
                 List<PostDto> postDtos = _mapper.Map<List<PostDto>>(posts);
 
@@ -407,49 +383,16 @@ namespace LinkUpPro.Core.Application.Services
                         "El usuario no está autenticado");
                 }
 
-                IQueryable<Post> query = _postRepository.GetAllQuery()
-                    .AsNoTracking()
-                    .Where(p => p.UserId == userId && !p.IsDeleted);
-
-                if (filter != null)
+                PostSearchCriteria? criteria = filter == null ? null : new PostSearchCriteria
                 {
-                    if (!string.IsNullOrWhiteSpace(filter.SearchText))
-                    {
-                        string searchText = filter.SearchText.Trim();
+                    SearchText = filter.SearchText,
+                    MediaType = filter.MediaType,
+                    CreatedFrom = filter.StartDate?.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                    CreatedTo = filter.EndDate?.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc),
+                    IsEdited = filter.IsEdited
+                };
 
-                        query = query.Where(p => p.Content.Contains(searchText));
-                    }
-
-                    if (filter.MediaType.HasValue)
-                    {
-                        query = query.Where(p => p.MediaType == filter.MediaType.Value);
-                    }
-
-                    if (filter.StartDate.HasValue)
-                    {
-                        DateTime startDate = filter.StartDate.Value
-                            .ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-
-                        query = query.Where(p => p.CreatedAt >= startDate);
-                    }
-
-                    if (filter.EndDate.HasValue)
-                    {
-                        DateTime endDate = filter.EndDate.Value
-                            .ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
-
-                        query = query.Where(p => p.CreatedAt <= endDate);
-                    }
-
-                    if (filter.IsEdited.HasValue)
-                    {
-                        bool isEdited = filter.IsEdited.Value;
-
-                        query = query.Where(p => (p.UpdatedAt != null) == isEdited);
-                    }
-                }
-
-                List<Post> posts = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
+                List<Post> posts = await _postRepository.GetByAuthorAsync(userId, criteria);
 
                 List<PostDto> postDtos = _mapper.Map<List<PostDto>>(posts);
 
@@ -471,19 +414,7 @@ namespace LinkUpPro.Core.Application.Services
                         "El usuario no está autenticado");
                 }
 
-                var friendshipsQuery = _friendshipRepository.GetAllQuery()
-                    .Where(f => f.Status == FriendshipStatus.Active &&
-                        (f.User1Id == userId || f.User2Id == userId));
-
-                List<Post> posts = await _postRepository.GetAllQuery()
-                    .AsNoTracking()
-                    .Where(p => !p.IsDeleted && p.UserId != userId &&
-                        p.Privacy == PostPrivacy.FriendsOnly &&
-                        friendshipsQuery.Any(f =>
-                            (f.User1Id == userId && f.User2Id == p.UserId) ||
-                            (f.User2Id == userId && f.User1Id == p.UserId)))
-                    .OrderByDescending(p => p.CreatedAt)
-                    .ToListAsync();
+                List<Post> posts = await _postRepository.GetFriendsPostsAsync(userId);
 
                 HashSet<string> activeUserIds = await _userAccountStatusService
                     .GetActiveUserIdsAsync(posts.Select(p => p.UserId));
@@ -511,30 +442,11 @@ namespace LinkUpPro.Core.Application.Services
 
             List<int> postIds = postDtos.Select(p => p.Id).ToList();
 
-            var reactionCounts = await _reactionRepository.GetAllQuery()
-                .Where(r => postIds.Contains(r.PostId))
-                .GroupBy(r => r.PostId)
-                .Select(g => new
-                {
-                    PostId = g.Key,
-                    LikesCount = g.Count(r => r.Type == ReactionType.Like),
-                    DislikesCount = g.Count(r => r.Type == ReactionType.Dislike)
-                })
-                .ToDictionaryAsync(r => r.PostId);
+            var reactionCounts = await _reactionRepository.CountByPostIdsAsync(postIds);
 
-            var commentCounts = await _commentRepository.GetAllQuery()
-                .Where(c => postIds.Contains(c.PostId) && !c.IsDeleted)
-                .GroupBy(c => c.PostId)
-                .Select(g => new
-                {
-                    PostId = g.Key,
-                    Count = g.Count()
-                })
-                .ToDictionaryAsync(c => c.PostId, c => c.Count);
+            var commentCounts = await _commentRepository.CountActiveByPostIdsAsync(postIds);
 
-            var userReactions = await _reactionRepository.GetAllQuery()
-                .Where(r => r.UserId == userId && postIds.Contains(r.PostId))
-                .ToDictionaryAsync(r => r.PostId, r => r.Type);
+            var userReactions = await _reactionRepository.GetUserReactionsAsync(userId, postIds);
 
             foreach (PostDto dto in postDtos)
             {

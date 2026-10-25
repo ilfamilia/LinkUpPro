@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using LinkUpPro.Core.Application.Dtos.Post;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.ViewModels.Comment;
 using LinkUpPro.Core.Application.ViewModels.Post;
@@ -26,6 +27,42 @@ public sealed class PostFeedBuilder(IPostService posts, ICommentService comments
             throw new DomainRuleException("No se pudieron cargar las publicaciones.");
 
         List<PostViewModel> postVms = mapper.Map<List<PostViewModel>>(postsResult.Data);
+        Dictionary<string, PublicUserViewModel> authors = await AttachCommentsAndAuthorsAsync(postVms, userId);
+
+        return postVms.Select(post => new PostCardViewModel
+        {
+            Post = post,
+            Author = authors.GetValueOrDefault(post.UserId) ?? new PublicUserViewModel { Id = post.UserId },
+            IsOwner = post.UserId == userId
+        }).ToList();
+    }
+
+    /// <summary>Loads the signed-in user's own posts ("Mis publicaciones") with the optional filters applied.</summary>
+    public async Task<List<PostViewModel>> BuildMyPostsAsync(PostFilterDto? filter = null)
+    {
+        string userId = currentUser.GetRequiredUserId();
+
+        var postsResult = await posts.GetMyPostsAsync(userId, filter);
+        if (!postsResult.IsSuccess || postsResult.Data is null)
+            throw new DomainRuleException("No se pudieron cargar las publicaciones.");
+
+        List<PostViewModel> postVms = mapper.Map<List<PostViewModel>>(postsResult.Data);
+        await AttachCommentsAndAuthorsAsync(postVms, userId);
+        return postVms;
+    }
+
+    /// <summary>Exposes the trusted current user id so the views can show owner-only actions.</summary>
+    public string CurrentUserId => currentUser.GetRequiredUserId();
+
+    /// <summary>Returns the caller's active friend ids so only friends' names link to their profiles.</summary>
+    public async Task<HashSet<string>> GetFriendIdsAsync()
+        => (await friends.GetActiveFriendIdsAsync(currentUser.GetRequiredUserId())).ToHashSet();
+
+    // Fills comment threads, then names and photos of post and comment authors in one batch lookup,
+    // so profile changes show up everywhere.
+    private async Task<Dictionary<string, PublicUserViewModel>> AttachCommentsAndAuthorsAsync(
+        List<PostViewModel> postVms, string userId)
+    {
         if (postVms.Count == 0) return [];
 
         var commentsResult = await comments.GetCommentsByPostIdsAsync(postVms.Select(p => p.Id), userId);
@@ -40,7 +77,6 @@ public sealed class PostFeedBuilder(IPostService posts, ICommentService comments
 
         List<CommentViewModel> allComments = Flatten(postVms.SelectMany(p => p.Comments)).ToList();
 
-        // One batch lookup for post and comment authors keeps names and photos current.
         var authorIds = postVms.Select(p => p.UserId).Concat(allComments.Select(c => c.UserId));
         Dictionary<string, PublicUserViewModel> authors = mapper
             .Map<List<PublicUserViewModel>>(await users.GetByIdsAsync(authorIds))
@@ -55,21 +91,17 @@ public sealed class PostFeedBuilder(IPostService posts, ICommentService comments
             }
         }
 
-        return postVms.Select(post =>
+        foreach (PostViewModel post in postVms)
         {
-            var author = authors.GetValueOrDefault(post.UserId) ?? new PublicUserViewModel { Id = post.UserId };
-            post.UserName = author.UserName;
-            post.UserProfilePicturePath = author.ProfilePicturePath;
-            return new PostCardViewModel { Post = post, Author = author, IsOwner = post.UserId == userId };
-        }).ToList();
+            if (authors.TryGetValue(post.UserId, out var author))
+            {
+                post.UserName = author.UserName;
+                post.UserProfilePicturePath = author.ProfilePicturePath;
+            }
+        }
+
+        return authors;
     }
-
-    /// <summary>Exposes the trusted current user id so the views can show owner-only actions.</summary>
-    public string CurrentUserId => currentUser.GetRequiredUserId();
-
-    /// <summary>Returns the caller's active friend ids so only friends' names link to their profiles.</summary>
-    public async Task<HashSet<string>> GetFriendIdsAsync()
-        => (await friends.GetActiveFriendIdsAsync(currentUser.GetRequiredUserId())).ToHashSet();
 
     private static IEnumerable<CommentViewModel> Flatten(IEnumerable<CommentViewModel> source)
     {

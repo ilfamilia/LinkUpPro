@@ -24,7 +24,8 @@ builder.Services.AddSession(opt =>
 builder.Services.AddPersistenceLayerIoc(builder.Configuration);
 builder.Services.AddIdentityLayerIocForWebApp(builder.Configuration);
 builder.Services.AddApplicationLayerIoc();
-builder.Services.AddSharedLayerIoc(builder.Configuration);
+builder.Services.AddSharedLayerIoc(builder.Configuration,
+    builder.Environment.WebRootPath ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot"));
 
 var app = builder.Build();
 

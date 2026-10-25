@@ -1,4 +1,5 @@
 using LinkUpPro.Core.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace LinkUpPro.Filters;
@@ -9,7 +10,12 @@ public sealed class ActiveAccountFilter(SocialUserGuard guard) : IAsyncActionFil
     /// <summary>Prevents an authenticated but inactive account from reaching a module action.</summary>
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        await guard.GetCurrentAsync();
+        // Public actions (for example the global error page) are reachable without a session.
+        if (!context.ActionDescriptor.EndpointMetadata.OfType<IAllowAnonymous>().Any())
+        {
+            await guard.GetCurrentAsync();
+        }
+
         await next();
     }
 }

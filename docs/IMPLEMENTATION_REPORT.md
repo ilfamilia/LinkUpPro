@@ -134,6 +134,13 @@ Se integró `origin/main` (login/registro, publicaciones, comentarios y reaccion
 - **Mi perfil** (`ProfileController`): edita nombre, apellido, teléfono y foto (la anterior se borra solo después de guardar la nueva). Cambio de contraseña opcional que valida la actual, exige los tres campos y una contraseña distinta, guarda todo en una sola actualización, invalida todas las sesiones y redirige al login. Correo y usuario son de solo lectura y el id siempre viene de la sesión.
 - **Correo local**: `MailSettings:PickupDirectory` guarda los correos como `.eml` en lugar de enviarlos por SMTP (útil sin credenciales). Si se elimina, se usa SMTP normal.
 
+## Ajustes de arquitectura (25 de octubre de 2026)
+
+- **Imágenes en la capa Shared:** `IImageStorageService` (Application) y `ImageStorageService` (Infrastructure.Share) reemplazan al `FileManager` del proyecto web. Valida extensión, firma, contenido y tamaño, genera el nombre del archivo, guarda de forma asíncrona y nunca borra fuera de `Images` ni la foto por defecto. La ruta física (`wwwroot`) llega desde `Program.cs`.
+- **Application sin Entity Framework:** las consultas de `PostService` y `CommentService` pasaron a métodos específicos de `IPostRepository`, `ICommentRepository` e `IReactionRepository` (Domain), implementados en Persistence. Se quitaron los paquetes de EF Core del proyecto Application.
+- **Controladores sin `UserManager`:** Home, Post, Comment y Reaction heredan de `SocialController`, que aplica `[Authorize]`, antiforgery, verificación de cuenta activa y errores seguros. El usuario sale de `ICurrentUserService` y los autores de `IUserDirectoryService` a través de `PostFeedBuilder`.
+- **Pantallas de error claras:** cualquier resultado fallido (no encontrado, sin permisos, validación o conflicto) muestra `SocialError` con el código HTTP correcto y un mensaje en español, en lugar de una página vacía del navegador. Se corrigió además `Post/Delete`, que devolvía la vista con un modelo incorrecto cuando la eliminación fallaba.
+
 ## Ejecución local
 
 ```powershell
@@ -154,4 +161,4 @@ dotnet ef database update --project LinkUpPro.Infrastructure.Identity --startup-
 dotnet run --project LinkUpPro --launch-profile https
 ```
 
-Verificación de punta a punta contra la base real (registro, activación, bloqueo, restablecimiento, solicitudes, publicaciones, comentarios, reacciones, notificaciones, Battleship, Mi perfil y cierre de sesión): 69 de 69 comprobaciones correctas.
+Verificación de punta a punta contra la base real (registro, activación, bloqueo, restablecimiento, solicitudes, publicaciones, comentarios, reacciones, notificaciones, Battleship, Mi perfil y cierre de sesión): 69 de 69 comprobaciones correctas. Prueba adicional de publicaciones y comentarios (validaciones, filtros, privacidad, comentarios desactivados, respuestas, edición, eliminación lógica, XSS y pantallas de error): 33 de 33.

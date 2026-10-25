@@ -2,13 +2,13 @@ using AutoMapper;
 using LinkUpPro.Core.Application.Dtos.User;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.ViewModels.User;
-using LinkUpPro.Helpers;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LinkUpPro.Controllers;
 
 /// <summary>"Mi perfil": the signed-in user edits only their own account; the id always comes from the session.</summary>
-public sealed class ProfileController(IAccountServiceForWebApp accounts, ICurrentUserService currentUser, IMapper mapper)
+public sealed class ProfileController(IAccountServiceForWebApp accounts, ICurrentUserService currentUser,
+    IImageStorageService imageStorage, IMapper mapper)
     : SocialController
 {
     [HttpGet]
@@ -45,7 +45,7 @@ public sealed class ProfileController(IAccountServiceForWebApp accounts, ICurren
         {
             try
             {
-                newImagePath = FileManager.Upload(vm.ProfileImageFile, userId, "Users");
+                newImagePath = await imageStorage.SaveAsync(vm.ProfileImageFile, userId, "Users");
             }
             catch (InvalidDataException ex)
             {
@@ -68,7 +68,7 @@ public sealed class ProfileController(IAccountServiceForWebApp accounts, ICurren
         if (response.HasError)
         {
             // Nothing was saved: drop the new photo and keep the previous one.
-            FileManager.DeleteFile(newImagePath);
+            imageStorage.Delete(newImagePath);
             foreach (string error in response.Errors) ModelState.AddModelError(string.Empty, error);
             return ProfileView(vm);
         }
@@ -76,7 +76,7 @@ public sealed class ProfileController(IAccountServiceForWebApp accounts, ICurren
         // The old photo is removed only after the new one is stored and linked to the profile.
         if (newImagePath is not null && response.PreviousProfileImage != newImagePath)
         {
-            FileManager.DeleteFile(response.PreviousProfileImage);
+            imageStorage.Delete(response.PreviousProfileImage);
         }
 
         if (response.PasswordChanged)

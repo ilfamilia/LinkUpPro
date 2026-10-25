@@ -1,8 +1,7 @@
-﻿using AutoMapper;
+using AutoMapper;
 using LinkUpPro.Core.Application.Dtos.User;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.ViewModels.User;
-using LinkUpPro.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,11 +12,14 @@ namespace LinkUpPro.Controllers
     {
         private readonly IMapper _mapper;
         private readonly IAccountServiceForWebApp _accountServiceForWebApp;
+        private readonly IImageStorageService _imageStorage;
 
-        public LoginController(IMapper mapper, IAccountServiceForWebApp accountServiceForWebApp)
+        public LoginController(IMapper mapper, IAccountServiceForWebApp accountServiceForWebApp,
+            IImageStorageService imageStorage)
         {
             _mapper = mapper;
             _accountServiceForWebApp = accountServiceForWebApp;
+            _imageStorage = imageStorage;
         }
 
         [AllowAnonymous]
@@ -126,11 +128,16 @@ namespace LinkUpPro.Controllers
 
             try
             {
-                imagePath = FileManager.Upload(vm.ProfileImageFile, userId, "Users");
+                imagePath = await _imageStorage.SaveAsync(vm.ProfileImageFile!, userId, "Users");
             }
             catch (InvalidDataException ex)
             {
                 ModelState.AddModelError(nameof(vm.ProfileImageFile), ex.Message);
+                return RegisterView(vm);
+            }
+            catch (IOException)
+            {
+                ModelState.AddModelError(nameof(vm.ProfileImageFile), "No fue posible guardar la foto de perfil. Inténtelo nuevamente.");
                 return RegisterView(vm);
             }
 
@@ -143,7 +150,7 @@ namespace LinkUpPro.Controllers
             if (response.HasError)
             {
                 // Never keep a photo that is not attached to a created profile.
-                FileManager.DeleteFile(imagePath);
+                _imageStorage.Delete(imagePath);
 
                 foreach (string error in response.Errors)
                 {

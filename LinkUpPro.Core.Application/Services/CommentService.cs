@@ -5,7 +5,6 @@ using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.Results;
 using LinkUpPro.Core.Domain.Entities;
 using LinkUpPro.Core.Domain.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace LinkUpPro.Core.Application.Services
 {
@@ -322,12 +321,7 @@ namespace LinkUpPro.Core.Application.Services
                 Dictionary<int, List<CommentDto>> result = ids.ToDictionary(id => id,
                     id => new List<CommentDto>());
 
-                List<Comment> comments = await _commentRepository.GetAllQuery()
-                    .AsNoTracking()
-                    .Where(c => ids.Contains(c.PostId))
-                    .OrderBy(c => c.CreatedAt)
-                    .ThenBy(c => c.Id)
-                    .ToListAsync();
+                List<Comment> comments = await _commentRepository.GetByPostIdsAsync(ids);
 
                 foreach (var group in comments.GroupBy(c => c.PostId))
                 {

@@ -7,10 +7,14 @@ using Microsoft.Extensions.Configuration;
 namespace LinkUpPro.Infrastructure.Share{
     public static class ServiceRegistration
     {
-        public static void AddSharedLayerIoc(this IServiceCollection services, IConfiguration configuration)
+        // webRootPath: physical folder served as static files, where uploaded images are stored.
+        public static void AddSharedLayerIoc(this IServiceCollection services, IConfiguration configuration,
+            string webRootPath)
         {
             services.Configure<EmailSettings>(configuration.GetSection("MailSettings"));
+            services.Configure<ImageStorageSettings>(opt => opt.RootPath = webRootPath);
             services.AddScoped<IEmailService, EmailService>();
+            services.AddScoped<IImageStorageService, ImageStorageService>();
         }
     }
 }
