@@ -1,12 +1,12 @@
 using AutoMapper;
-using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.Dtos.User;
-using LinkUpPro.Core.Application.Helpers;
-using LinkUpPro.Infrastructure.Identity.Entities;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
-using System.Diagnostics;
+using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.ViewModels.User;
+using LinkUpPro.Helpers;
+using LinkUpPro.Infrastructure.Identity.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 
 namespace LinkUpPro.Controllers
 {
@@ -22,21 +22,30 @@ namespace LinkUpPro.Controllers
             _userManager = userManager;
         }
 
-        public async Task<IActionResult> Index()
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> Index([FromQuery] bool sessionExpired = false)
         {
             AppUser? userSession = await _userManager.GetUserAsync(User);
 
-            if(userSession != null)
+            if (userSession != null)
             {
                 var user = await _accountServiceForWebApp.GetUserByUserNameAsync(userSession.UserName ?? "");
-                if (user != null){
+
+                if (user != null)
+                {
                     return RedirectToAction("Index", "Home");
                 }
             }
+
+            ViewData["SessionExpired"] = sessionExpired;
+
             return View();
         }
 
         [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Index(LoginViewModel vm)
         {
             AppUser? userSession = await _userManager.GetUserAsync(User);
@@ -65,141 +74,273 @@ namespace LinkUpPro.Controllers
             }
             else
             {
-                foreach(var error in LoginResponse?.Errors ?? [])
+                foreach (string error in LoginResponse?.Errors ?? [])
                 {
-                    ModelState.AddModelError("userValidation", error);
-                }    
+                    ModelState.AddModelError(string.Empty, error);
+                }
             }
             vm.Password = "";
             return View(vm);
         }
 
-        public async Task<ActionResult> Logout()
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Logout()
         {
             await _accountServiceForWebApp.SignOutAsync();
+
             return RedirectToAction("Index", "Login");
         }
+
+
+        [AllowAnonymous]
         public IActionResult Register()
         {
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
             return View();
         }
 
         [HttpPost]
-        public async Task<ActionResult> Register(RegisterUserViewModel vm)
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Register(RegisterUserViewModel vm)
         {
-            Console.WriteLine("Registering user: " + vm.UserName);
-            Console.WriteLine("Registering user: " + vm.Email);
-            Console.WriteLine("Registering user: " + vm.Name);
-            Console.WriteLine("Registering user: " + vm.LastName);
-            Console.WriteLine("Registering user: " + vm.Phone);
-            Console.WriteLine("Registering user: " + vm.Password);
-            Console.WriteLine("Registering user: " + vm.ConfirmPassword);
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
             if (!ModelState.IsValid)
             {
                 return View(vm);
             }
-    
+
+            vm.Name = vm.Name.Trim();
+            vm.LastName = vm.LastName.Trim();
+            vm.Email = vm.Email.Trim();
+            vm.UserName = vm.UserName.Trim();
+            vm.Phone = vm.Phone?.Trim();
+
             RegisterUserDto registerUserDto = _mapper.Map<RegisterUserDto>(vm);
-            string origin = Request?.Headers?.Origin.ToString() ?? string.Empty;
+
+            registerUserDto.Id = Guid.NewGuid().ToString();
+
+            string imagePath;
+
+            try
+            {
+                imagePath = FileManager.Upload(vm.ProfileImageFile, registerUserDto.Id, "Users");
+            }
+            catch (InvalidDataException ex)
+            {
+                ModelState.AddModelError(nameof(vm.ProfileImageFile), ex.Message);
+
+                return View(vm);
+            }
+            catch (IOException)
+            {
+                ModelState.AddModelError(nameof(vm.ProfileImageFile), "No se pudo guardar la fotografía de perfil.");
+
+                return View(vm);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                ModelState.AddModelError(nameof(vm.ProfileImageFile), "No se pudo guardar la fotografía de perfil.");
+
+                return View(vm);
+            }
+
+            registerUserDto.ProfileImage = imagePath;
+
+            string origin = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
 
             RegisterResponseDto? registerUserResponse = await _accountServiceForWebApp.RegisterUserAsync(registerUserDto, origin);
 
-            if (registerUserResponse.HasError)
+            if (registerUserResponse == null || registerUserResponse.HasError)
             {
-                ViewBag.HasError = true;
-                ViewBag.Errors = registerUserResponse.Errors;
+                FileManager.DeleteFile(imagePath);
+
+                if (registerUserResponse == null)
+                {
+                    ModelState.AddModelError(string.Empty, "Ocurrió un error al registrar el usuario.");
+                }
+                else
+                {
+                    foreach (string error in registerUserResponse.Errors)
+                    {
+                        ModelState.AddModelError(string.Empty, error);
+                    }
+                }
+
                 return View(vm);
             }
 
-            if (registerUserResponse != null)
+            TempData["RegistrationEmailSent"] = registerUserResponse.ActivationEmailSent.ToString();
+
+            return RedirectToAction(nameof(RegistrationResult));
+        }
+
+        [AllowAnonymous]
+        public IActionResult ResendEmailActivation()
+        {
+            return View(new EmailConfirmationViewModel
             {
-                registerUserDto.Id = registerUserResponse.Id;
-
-                EditUserDto editUserDto = new()
-                {
-                    Id = registerUserResponse.Id,
-                    Name = registerUserDto.Name,
-                    LastName = registerUserDto.LastName,
-                    Phone = registerUserDto.Phone,
-                    CurrentPassword = registerUserDto.Password,
-                    NewPassword = registerUserDto.Password,
-                    ProfileImage = FileManager.Upload(vm.ProfileImageFile, registerUserDto.Id, "Users")
-                };
-
-                await _accountServiceForWebApp.EditUserAsync(editUserDto, origin, true);
-            }
-            return RedirectToRoute(new { controller = "Login", action = "Index" });
+                UserName = string.Empty
+            });
         }
-        
-        public async Task<ActionResult> ResendEmailActivation()
-        {
-            return View();
-        }
-        
+
         [HttpPost]
-        public async Task<ActionResult> ResendEmailActivation(EmailConfirmationViewModel vm)
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResendEmailActivation(EmailConfirmationViewModel vm)
         {
-            EmailConfirmationDto dto = new() { UserName = vm.UserName };
-            string origin = Request?.Headers?.Origin.ToString() ?? string.Empty;
+            if (!ModelState.IsValid)
+            {
+                return View(vm);
+            }
+
+            EmailConfirmationDto dto = new()
+            {
+                UserName = vm.UserName.Trim()
+            };
+
+            string origin = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+
             await _accountServiceForWebApp.ResendEmailActivationAsync(dto, origin);
-            return RedirectToRoute(new { controller = "Login", action = "Index" });
+
+            TempData["ActivationResendMessage"] = "Si la cuenta existe y todavía no ha sido activada, " +
+                "recibirá un nuevo enlace de activación.";
+
+            return RedirectToAction(nameof(ResendEmailActivation));
         }
 
-        public async Task<IActionResult> ConfirmEmail(string userId,string token)
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> ConfirmEmail(string userId, string token)
         {
             string response = await _accountServiceForWebApp.ConfirmAccountAsync(userId, token);
+
             return View("ConfirmEmail", response);
         }
 
+        [AllowAnonymous]
         public IActionResult ForgotPassword()
-        {           
-            return View(new ForgotPasswordRequestViewModel() {UserName = ""});
-        } 
+        {
+            return View(new ForgotPasswordRequestViewModel
+            {
+                UserName = string.Empty
+            });
+        }
 
         [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequestViewModel vm)
         {
-            if(!ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
                 return View(vm);
             }
-            string origin = Request?.Headers?.Origin.ToString() ?? string.Empty;
-            ForgotPasswordRequestDto Dto = new() {UserName = vm.UserName, Origin = origin};
-            UserResponseDto? returnUser = await _accountServiceForWebApp.ForgotPasswordAsync(Dto);
 
-            if (returnUser.HasError)
+            ForgotPasswordRequestDto dto = new()
             {
-                ViewBag.HasError = true;
-                ViewBag.Errors = returnUser.Errors;
-                return View(vm);
-            }
-            return RedirectToRoute(new { controller = "Login", action = "Index" });
+                UserName = vm.UserName.Trim(),
+                Origin = $"{Request.Scheme}://{Request.Host}{Request.PathBase}"
+            };
+
+            await _accountServiceForWebApp.ForgotPasswordAsync(dto);
+
+            TempData["ForgotPasswordMessage"] = "Si el nombre de usuario corresponde a una cuenta " +
+                "registrada, recibirá un enlace para restablecer " +
+                "su contraseña.";
+
+            return RedirectToAction(nameof(ForgotPassword));
         }
 
-        public IActionResult ResetPassword(string userId, string token)
-        {           
-            return View(new ResetPasswordRequestViewModel() { Id = userId,Token = token,Password = ""});
+        [AllowAnonymous]
+        public IActionResult ResetPassword(string? userId, string? token)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(token))
+            {
+                TempData["PasswordResetError"] = "El enlace para restablecer la contraseña no es válido.";
+
+                return RedirectToAction(nameof(ForgotPassword));
+            }
+
+            ResetPasswordRequestViewModel vm = new()
+            {
+                Id = userId,
+                Token = token,
+                Password = string.Empty,
+                ConfirmPassword = string.Empty
+            };
+
+            return View(vm);
         }
 
         [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ResetPassword(ResetPasswordRequestViewModel vm)
         {
             if (!ModelState.IsValid)
             {
                 return View(vm);
-            }  
+            }
 
-            ResetPasswordRequestDto dto = new() { Id = vm.Id ,Password = vm.Password,Token = vm.Token };
-            UserResponseDto? returnUser = await _accountServiceForWebApp.ResetPasswordAsync(dto);
-
-            if (returnUser.HasError)
+            ResetPasswordRequestDto dto = new()
             {
-                ViewBag.HasError = true;
-                ViewBag.Errors = returnUser.Errors;
+                Id = vm.Id,
+                Token = vm.Token,
+                Password = vm.Password
+            };
+
+            UserResponseDto result = await _accountServiceForWebApp.ResetPasswordAsync(dto);
+
+            if (result.HasError)
+            {
+                foreach (string error in result.Errors)
+                {
+                    ModelState.AddModelError(string.Empty, error);
+                }
+
+                vm.Password = string.Empty;
+                vm.ConfirmPassword = string.Empty;
+
                 return View(vm);
             }
 
-            return RedirectToRoute(new { controller = "Login", action = "Index" });
+            TempData["PasswordResetSuccess"] = "Su contraseña fue restablecida correctamente. " +
+                "Ya puede iniciar sesión.";
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult RegistrationResult()
+        {
+            if (TempData["RegistrationEmailSent"] is not string emailSent)
+            {
+                return RedirectToAction("Index", "Login");
+            }
+
+            return View(bool.Parse(emailSent));
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult AccessDenied()
+        {
+            Response.StatusCode = StatusCodes.Status403Forbidden;
+
+            return View();
         }
     }    
 }

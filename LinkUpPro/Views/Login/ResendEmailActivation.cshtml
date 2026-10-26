@@ -1,4 +1,5 @@
-@model ForgotPasswordRequestViewModel
+@model EmailConfirmationViewModel
+
 @{
     ViewData["Title"] = "Home Page";
 }
@@ -9,9 +10,16 @@
         <p class="card-text py-2">
           Introduce tu nombre de usuario y te enviaremos un correo electrónico con instrucciones para activar tu cuenta.
         </p>
+        
+        @if (TempData["ActivationResendMessage"] is string message)
+        {
+            <div class="alert alert-info">@message</div>
+        }
+
         <form asp-controller="Login" asp-action="ResendEmailActivation" method="POST">
           <div data-mdb-input-init class="form-outline">
               <input asp-for="UserName" type="text" class="form-control my-3" placeholder="Introduzca su nombre de usuario"/>
+              <span asp-validation-for="UserName" class="text-danger"></span>
           </div>
           <button type="submit" data-mdb-ripple-init class="btn btn-primary w-100">Activar cuenta</button>
         </form>

@@ -33,6 +33,7 @@ namespace LinkUpPro.Infrastructure.Identity.Contexts
                 entity.Property(u => u.LastName).IsRequired().HasMaxLength(100);
                 entity.Property(u => u.ProfilePicturePath).IsRequired().HasMaxLength(500);
                 entity.HasIndex(u => u.NormalizedEmail).IsUnique().HasDatabaseName("EmailIndex").HasFilter("[NormalizedEmail] IS NOT NULL");
+                entity.Property(u => u.PasswordResetTokenHash).HasMaxLength(64).IsUnicode(false);
             });
             #endregion
 

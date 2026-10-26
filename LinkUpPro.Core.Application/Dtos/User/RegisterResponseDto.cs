@@ -9,6 +9,7 @@ namespace LinkUpPro.Core.Application.Dtos.User
         public required string UserName { get; set; }
         public bool IsVerified { get; set; }
         public bool HasError { get; set; }
+        public bool ActivationEmailSent { get; set; }
         public required List<string> Errors { get; set; }
     }
 }

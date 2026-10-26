@@ -13,6 +13,11 @@
     <link rel="stylesheet" href="~/css/Comment/Comments.css" asp-append-version="true" />
 }
 
+@if (TempData["ProfileUpdated"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+
 <div class="container mt-4">
     <h2 class="mb-4">Mis publicaciones</h2>
 

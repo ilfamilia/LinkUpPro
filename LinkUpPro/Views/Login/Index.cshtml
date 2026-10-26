@@ -3,7 +3,6 @@
     ViewData["Title"] = "Home Page";
 }
 
-<!-- Pills navs -->
 <ul class="nav nav-pills nav-justified mb-3" id="ex1" role="tablist">
   <li class="nav-item" role="presentation">
     <a class="nav-link active" id="tab-login" data-mdb-pill-init role="tab" aria-selected="true">Iniciar Sesion</a>
@@ -13,37 +12,69 @@
       aria-controls="pills-register" aria-selected="false">Registrate</a>
   </li>
 </ul>
-<!-- Pills navs -->
 
-<!-- Pills content -->
+@if (TempData["ProfilePasswordChanged"] is string successMessage)
+{
+    <div class="alert alert-success">@successMessage</div>
+}
+
+@if (ViewData["SessionExpired"] is true)
+{
+    <div class="alert alert-warning" role="alert">
+        Su sesión finalizó por inactividad.
+        Inicie sesión nuevamente para continuar.
+    </div>
+}
+
+@if (TempData["PasswordResetSuccess"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+
 <div class="tab-content">
   <div class="tab-pane fade show active" id="pills-login" role="tabpanel" aria-labelledby="tab-login">
     <form asp-controller="Login" asp-action="Index" method="POST">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
       <br />
-      <!-- Email input -->
       <div data-mdb-input-init class="form-outline mb-4">
-        <input asp-for="UserName" type="text" class="form-control" placeholder="john_doe"/>
-        <label asp-for="UserName" type="text" class="form-label">Nombre del usuario</label>
+        <label asp-for="UserName" class="form-label">Nombre del usuario</label>
+        <input asp-for="UserName" type="text" class="form-control" placeholder="john_doe" />
+        <span asp-validation-for="UserName" class="text-danger"></span>
       </div>
-      <!-- Password input -->
-      <div data-mdb-input-init class="form-outline mb-4">
-        <input asp-for="Password" type="password" class="form-control" placeholder="********"/>
-        <label asp-for="Password" class="form-label" >Contraseña</label>
+      <div class="mb-4">
+        <label asp-for="Password" class="form-label">Contraseña</label>
+        <div class="input-group">
+            <input asp-for="Password" type="password" class="form-control"
+                placeholder="********" autocomplete="current-password" />
+            <button id="togglePassword" type="button" class="btn btn-outline-secondary"
+                aria-label="Mostrar contraseña" aria-controls="Password" aria-pressed="false">
+                Mostrar
+            </button>
+        </div>
+        <span asp-validation-for="Password" class="text-danger"></span>
       </div>
-      <!-- 2 column grid layout -->
       <div class="row mb-4">
         <div class="col-md-6 d-flex justify-content-center">
-          <!-- Checkbox -->
           <div class="form-check mb-3 mb-md-0">
-            <input asp-for="RememberMe" class="form-check-input" type="checkbox" value="" />
+            <input asp-for="RememberMe" class="form-check-input" type="checkbox" />
             <label asp-for="RememberMe" class="form-check-label">Mantener sesion iniciada</label>
+            <small class="text-muted d-block mt-2">
+                Seleccione esta opción únicamente si está
+                utilizando un dispositivo personal.
+            </small>
           </div>
         </div>
-        <div class="col-md-6 d-flex justify-content-center">
-          <a asp-controller="Login" asp-action="ForgotPassword">Olvidaste tu contraseña?</a>
+        <div class="col-md-6 d-flex flex-column align-items-center gap-2">
+            <a asp-controller="Login" asp-action="ForgotPassword">Restablecer contraseña</a>
+            <a asp-controller="Login" asp-action="ResendEmailActivation">Reenviar correo de activación</a>
         </div>
       </div>
       <button type="submit" data-mdb-button-init data-mdb-ripple-init class="btn btn-primary btn-block mb-4">Iniciar Sesion</button>
     </form>
   </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/Login/Index.js" asp-append-version="true"></script>
+}

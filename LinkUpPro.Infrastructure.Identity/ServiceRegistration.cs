@@ -3,8 +3,10 @@ using LinkUpPro.Infrastructure.Identity.Contexts;
 using LinkUpPro.Infrastructure.Identity.Entities;
 using LinkUpPro.Infrastructure.Identity.Services;
 using LinkUpPro.Infrastructure.Identity.TokenProviders;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -102,14 +104,68 @@ namespace LinkUpPro.Infrastructure.Identity
 
                 opt.Events.OnValidatePrincipal = async context =>
                 {
+                    var userManager = context.HttpContext.RequestServices
+                        .GetRequiredService<UserManager<AppUser>>();
+
+                    AppUser? user = context.Principal == null
+                        ? null
+                        : await userManager.GetUserAsync(context.Principal);
+
+                    if (user == null || !user.EmailConfirmed)
+                    {
+                        context.RejectPrincipal();
+
+                        await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+
+                        return;
+                    }
+
                     await SecurityStampValidator.ValidatePrincipalAsync(context);
 
-                    // Prevent extending persistent sessions during stamp validation.
                     if (context.Properties.IsPersistent)
                     {
                         context.ShouldRenew = false;
                     }
                 };
+
+                opt.Events.OnRedirectToLogin = context =>
+                {
+                    string? cookieValue = context.Options.CookieManager.GetRequestCookie(context.HttpContext,
+                            context.Options.Cookie.Name!);
+
+                    bool sessionExpired = false;
+
+                    if (!string.IsNullOrEmpty(cookieValue))
+                    {
+                        var ticket = context.Options.TicketDataFormat.Unprotect(cookieValue);
+
+                        if (ticket != null &&
+                            !ticket.Properties.IsPersistent &&
+                            ticket.Properties.ExpiresUtc is DateTimeOffset expiresUtc &&
+                            expiresUtc <= DateTimeOffset.UtcNow)
+                        {
+                            sessionExpired = true;
+                        }
+                    }
+
+                    string redirectUrl = context.RedirectUri;
+
+                    if (sessionExpired)
+                    {
+                        redirectUrl = QueryHelpers.AddQueryString(redirectUrl, "sessionExpired", "true");
+                    }
+
+                    context.Response.Redirect(redirectUrl);
+
+                    return Task.CompletedTask;
+
+                };
+            })
+            .AddCookie(IdentityConstants.TwoFactorRememberMeScheme, opt =>
+            {
+                opt.Cookie.HttpOnly = true;
+                opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                opt.Cookie.SameSite = SameSiteMode.Lax;
             });
 
             services.AddAuthorization();

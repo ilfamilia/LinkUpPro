@@ -4,8 +4,8 @@ namespace LinkUpPro.Core.Application.ViewModels.User
 {
     public class ForgotPasswordRequestViewModel
     {
-        [Required(ErrorMessage = "You must enter the username of user")]
+        [Required(ErrorMessage = "El nombre de usuario es obligatorio")]
         [DataType(DataType.Text)]
-        public required string UserName { get; set; }      
+        public required string UserName { get; set; }
     }
 }

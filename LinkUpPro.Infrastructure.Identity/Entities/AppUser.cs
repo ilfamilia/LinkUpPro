@@ -13,5 +13,9 @@ namespace LinkUpPro.Infrastructure.Identity.Entities
         public required DateTime CreatedAt { get; set; }
 
         public DateTime? UpdatedAt { get; set; }
+
+        public DateTime? LastActivationEmailSentAtUtc { get; set; }
+
+        public string? PasswordResetTokenHash { get; set; }
     }
 }

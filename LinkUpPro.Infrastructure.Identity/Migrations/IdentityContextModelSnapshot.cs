@@ -51,6 +51,9 @@ namespace LinkUpPro.Infrastructure.Identity.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<DateTime?>("LastActivationEmailSentAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -72,6 +75,11 @@ namespace LinkUpPro.Infrastructure.Identity.Migrations
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");

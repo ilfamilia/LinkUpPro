@@ -23,9 +23,10 @@ namespace LinkUpPro.Infrastructure.Share.Services
                 emailRequestDto.ToRange?.Add(emailRequestDto.To ?? "");
                 MimeMessage email = new()
                 {
-                    Sender = MailboxAddress.Parse(_emailSttings.EmailFrom),
-                    Subject = emailRequestDto.Subject,
+                    Subject = emailRequestDto.Subject
                 };
+
+                email.From.Add(new MailboxAddress(_emailSttings.DisplayName, _emailSttings.EmailFrom));
 
                 foreach (var to in emailRequestDto.ToRange ?? [])
                 {
@@ -47,7 +48,8 @@ namespace LinkUpPro.Infrastructure.Share.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error sending email: {ex.Message}");
+                _logger.LogError(ex, "Ocurrió un error al enviar el correo electrónico.");
+
                 throw;
             }
         }
