@@ -6,8 +6,10 @@
     var attackCells = Model.Attacks.ToDictionary(a => (a.Row, a.Column));
 }
 
-<link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
-<link rel="stylesheet" href="~/css/Battleship/Attack.css" asp-append-version="true" />
+@section Styles {
+    <link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Battleship/Attack.css" asp-append-version="true" />
+}
 
 <div class="container battleship-page battleship-page--wide mt-4 mb-5">
     <div class="battleship-page-header d-flex flex-wrap justify-content-between gap-3 align-items-center mb-3">
@@ -49,7 +51,7 @@
     }
     else if (Model.IsMyTurn)
     {
-        <div class="alert alert-primary">Es tu turno. Selecciona una casilla que no hayas atacado.</div>
+        <div class="alert alert-info">Es tu turno. Selecciona una casilla que no hayas atacado.</div>
     }
     else
     {

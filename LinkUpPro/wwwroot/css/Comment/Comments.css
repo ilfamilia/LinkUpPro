@@ -1,5 +1,4 @@
-﻿/* Conversaciones reutilizadas por Home y Amigos. */
-.comment-avatar {
+﻿.comment-avatar {
     width: 36px;
     height: 36px;
     object-fit: cover;
@@ -94,6 +93,14 @@
 
     .comment-replies {
         margin-left: .5rem;
+    }
+
+    .comment-replies .comment-replies .comment-replies {
+        margin-left: 0;
+    }
+
+    .comment-replies .comment-replies .comment-replies .comment-item {
+        padding-left: .35rem;
     }
 
     .comment-form-card .card-body {

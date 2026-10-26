@@ -4,8 +4,10 @@
     HashSet<(int, int)> occupied = Model.Placement.OccupiedCells
         .Select(cell => (cell.Row, cell.Column)).ToHashSet();
 }
-<link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
-<link rel="stylesheet" href="~/css/Battleship/Setup.css" asp-append-version="true" />
+@section Styles {
+    <link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Battleship/Setup.css" asp-append-version="true" />
+}
 
 <div class="container battleship-page battleship-page--wide mt-4 mb-5">
     <h1 class="h2 mb-2">Seleccionar casilla inicial</h1>
