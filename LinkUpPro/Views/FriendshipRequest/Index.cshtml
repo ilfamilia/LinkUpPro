@@ -5,8 +5,15 @@
     ViewData["Title"] = "Solicitudes de amistad";
 }
 
-<div class="container my-4">
-    <h2>Solicitudes de amistad</h2>
+@section Styles {
+    <link rel="stylesheet" href="~/css/FriendshipRequest/Index.css" asp-append-version="true" />
+}
+
+<div class="request-page my-4">
+    <header class="request-page__intro">
+        <h1 class="mb-1">Solicitudes de amistad</h1>
+        <p class="text-muted mb-0">Administra las solicitudes recibidas y enviadas.</p>
+    </header>
 
     @if (TempData["FriendshipRequestSuccess"] is string success)
     {
@@ -17,14 +24,18 @@
         <div class="alert alert-danger" role="alert">@error</div>
     }
 
-    <section class="mb-5" aria-labelledby="received-title">
-        <h3 id="received-title" class="h5 mt-4 mb-3">
-            Pendientes de responder (@Model.ReceivedPendingCount)
-        </h3>
+    <section class="request-page__section" aria-labelledby="received-title">
+        <div class="request-page__section-header">
+            <h2 id="received-title" class="h4 mb-0">
+                Pendientes de responder (@Model.ReceivedPendingCount)
+            </h2>
+        </div>
 
         @if (Model.ReceivedPending.Count == 0)
         {
-            <p class="text-muted">No tiene solicitudes de amistad pendientes de responder.</p>
+            <div class="request-empty-state" role="status">
+                <p>No tiene solicitudes de amistad pendientes de responder.</p>
+            </div>
         }
         else
         {
@@ -32,44 +43,46 @@
                 @foreach (var request in Model.ReceivedPending)
                 {
                     <div class="col-12 col-lg-6">
-                        <div class="card h-100">
-                            <div class="card-body">
+                        <article class="card request-card h-100">
+                            <div class="card-body d-flex flex-column">
                                 <partial name="_FriendshipUser" model="request.OtherUser" />
-                                <div class="small text-muted mt-3">
+                                <div class="request-card__meta mt-3">
                                     Enviada: @request.RequestedAt.ToString("dd/MM/yyyy HH:mm") UTC
                                 </div>
                                 <a asp-action="MutualFriends"
                                    asp-route-otherUserId="@request.OtherUser.Id"
-                                   class="d-inline-block mt-2">
+                                   class="d-inline-block mt-2 small align-self-start">
                                     Amigos en común: @request.MutualFriendsCount
                                 </a>
-                                <div class="d-flex flex-wrap gap-2 mt-3">
-                                    <a asp-action="Confirm"
-                                       asp-route-requestId="@request.Id"
-                                       asp-route-operation="Accept"
-                                       class="btn btn-success btn-sm">Aceptar</a>
-                                    <a asp-action="Confirm"
-                                       asp-route-requestId="@request.Id"
-                                       asp-route-operation="Reject"
-                                       class="btn btn-outline-danger btn-sm">Rechazar</a>
+                                <div class="request-card__actions mt-auto pt-3">
+                                    <a asp-action="Confirm" asp-route-requestId="@request.Id"
+                                       asp-route-operation="Accept" class="btn btn-success btn-sm">
+                                        Aceptar
+                                    </a>
+                                    <a asp-action="Confirm" asp-route-requestId="@request.Id"
+                                       asp-route-operation="Reject" class="btn btn-outline-danger btn-sm">
+                                        Rechazar
+                                    </a>
                                 </div>
                             </div>
-                        </div>
+                        </article>
                     </div>
                 }
             </div>
         }
     </section>
 
-    <section aria-labelledby="sent-title">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <h3 id="sent-title" class="h5 mb-0">Solicitudes enviadas</h3>
+    <section class="request-page__section" aria-labelledby="sent-title">
+        <div class="request-page__section-header">
+            <h2 id="sent-title" class="h4 mb-0">Solicitudes enviadas</h2>
             <a asp-action="New" class="btn btn-primary">Nueva solicitud de amistad</a>
         </div>
 
         @if (Model.Sent.Count == 0)
         {
-            <p class="text-muted">No ha enviado solicitudes de amistad.</p>
+            <div class="request-empty-state" role="status">
+                <p>No ha enviado solicitudes de amistad.</p>
+            </div>
         }
         else
         {
@@ -77,15 +90,21 @@
                 @foreach (var request in Model.Sent)
                 {
                     <div class="col-12 col-lg-6">
-                        <div class="card h-100">
-                            <div class="card-body">
+                        <article class="card request-card h-100">
+                            <div class="card-body d-flex flex-column">
                                 <partial name="_FriendshipUser" model="request.OtherUser" />
-                                <div class="small text-muted mt-3">
+                                <div class="request-card__meta mt-3">
                                     Enviada: @request.RequestedAt.ToString("dd/MM/yyyy HH:mm") UTC
                                 </div>
-                                <div class="small mt-1">
-                                    Estado:
-                                    <strong>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                                    <span class="request-card__meta">Estado:</span>
+                                    <span class="request-status @(request.Status switch
+                                        {
+                                            FriendshipRequestStatus.Pending => "request-status--pending",
+                                            FriendshipRequestStatus.Accepted => "request-status--accepted",
+                                            FriendshipRequestStatus.Rejected => "request-status--rejected",
+                                            _ => "request-status--cancelled"
+                                        })">
                                         @(request.Status switch
                                         {
                                             FriendshipRequestStatus.Pending => "En espera de respuesta",
@@ -93,37 +112,37 @@
                                             FriendshipRequestStatus.Rejected => "Rechazada",
                                             _ => "Cancelada"
                                         })
-                                    </strong>
+                                    </span>
                                 </div>
                                 @if (request.RespondedAt.HasValue)
                                 {
-                                    <div class="small text-muted">
+                                    <div class="request-card__meta mt-2">
                                         Respondida: @request.RespondedAt.Value.ToString("dd/MM/yyyy HH:mm") UTC
                                     </div>
                                 }
                                 <a asp-action="MutualFriends"
                                    asp-route-otherUserId="@request.OtherUser.Id"
-                                   class="d-inline-block mt-2">
+                                   class="d-inline-block mt-2 small align-self-start">
                                     Amigos en común: @request.MutualFriendsCount
                                 </a>
-                                <div class="mt-3">
+                                <div class="request-card__actions mt-auto pt-3">
                                     @if (request.Status == FriendshipRequestStatus.Pending)
                                     {
-                                        <a asp-action="Confirm"
-                                           asp-route-requestId="@request.Id"
-                                           asp-route-operation="Cancel"
-                                           class="btn btn-outline-danger btn-sm">Cancelar solicitud</a>
+                                        <a asp-action="Confirm" asp-route-requestId="@request.Id"
+                                           asp-route-operation="Cancel" class="btn btn-outline-danger btn-sm">
+                                            Cancelar solicitud
+                                        </a>
                                     }
                                     else if (request.Status is FriendshipRequestStatus.Accepted or FriendshipRequestStatus.Rejected)
                                     {
-                                        <a asp-action="Confirm"
-                                           asp-route-requestId="@request.Id"
-                                           asp-route-operation="Hide"
-                                           class="btn btn-outline-secondary btn-sm">Eliminar del historial</a>
+                                        <a asp-action="Confirm" asp-route-requestId="@request.Id"
+                                           asp-route-operation="Hide" class="btn btn-outline-secondary btn-sm">
+                                            Eliminar del historial
+                                        </a>
                                     }
                                 </div>
                             </div>
-                        </div>
+                        </article>
                     </div>
                 }
             </div>
