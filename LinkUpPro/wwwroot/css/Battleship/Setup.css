@@ -1,5 +1,4 @@
-﻿/* Battleship: selección y visualización de posiciones propias, 12 x 12. */
-.battleship-board-scroll {
+﻿.battleship-board-scroll {
     width: 100%;
     max-width: 604px;
     overflow-x: auto;
@@ -14,9 +13,9 @@
 
 .battleship-board {
     display: grid;
-    width: 576px;
-    min-width: 456px;
-    max-width: 100%;
+    width: 100%;
+    min-width: 384px;
+    max-width: 576px;
     grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 0;
     background: #fff;
@@ -77,4 +76,10 @@
 
 .battleship-direction-card {
     max-width: 550px;
+}
+
+@media (max-width: 399.98px) {
+    .battleship-board {
+        min-width: 360px;
+    }
 }

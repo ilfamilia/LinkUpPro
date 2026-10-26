@@ -8,10 +8,10 @@
     padding-bottom: .65rem;
 }
 
-.battleship-grid-wrap:focus-visible {
-    outline: 2px solid var(--linkup-primary, #71505B);
-    outline-offset: 1px;
-}
+    .battleship-grid-wrap:focus-visible {
+        outline: 2px solid var(--linkup-primary, #71505B);
+        outline-offset: 1px;
+    }
 
 .battleship-grid {
     width: max-content;
@@ -21,80 +21,117 @@
     --bs-table-border-color: #D0C9CD;
 }
 
-.battleship-grid th,
-.battleship-grid td {
-    width: 43px;
-    min-width: 43px;
-    height: 43px;
-    padding: 0;
-    text-align: center;
-    vertical-align: middle;
+    .battleship-grid th,
+    .battleship-grid td {
+        width: 43px;
+        min-width: 43px;
+        height: 43px;
+        padding: 0;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .battleship-grid th {
+        background: #F4F1F3;
+        color: #51414A;
+        font-size: .8125rem;
+        font-weight: 600;
+    }
+
+    .battleship-grid thead th {
+        height: 36px;
+    }
+
+    .battleship-grid tbody th {
+        width: 43px;
+    }
+
+    .battleship-grid .battleship-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 42px;
+        height: 100%;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        font-size: 1.18rem;
+        font-weight: 650;
+        line-height: 1;
+        text-decoration: none;
+    }
+
+    .battleship-grid .battleship-available {
+        background: #F4F1F3;
+        color: #71505B;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+        .battleship-grid .battleship-available:hover {
+            background: #E8E1E7;
+        }
+
+        .battleship-grid .battleship-available:focus-visible {
+            background: #E8E1E7;
+            outline: 3px solid #71505B;
+            outline-offset: -3px;
+        }
+
+    .battleship-grid .battleship-hit {
+        background: #C03945;
+        color: #fff;
+    }
+
+    .battleship-grid .battleship-miss {
+        background: #198754;
+        color: #fff;
+    }
+
+    .battleship-grid .battleship-ship {
+        background: #D7DAEB;
+        color: #51414A;
+    }
+
+    .battleship-grid .battleship-unavailable {
+        background: #F4F1F3;
+        color: #99919A;
+    }
+
+/* Disminución moderada en móviles: 13 columnas contando los encabezados.
+   Se mantiene el scroll en pantallas donde no caben todas las casillas. */
+@media (min-width: 576px) and (max-width: 767.98px) {
+    .battleship-grid th,
+    .battleship-grid td {
+        width: 38px;
+        min-width: 38px;
+        height: 38px;
+    }
+
+    .battleship-grid .battleship-cell {
+        min-height: 37px;
+    }
 }
 
-.battleship-grid th {
-    background: #F4F1F3;
-    color: #51414A;
-    font-size: .8125rem;
-    font-weight: 600;
-}
+@media (max-width: 575.98px) {
+    .battleship-grid th,
+    .battleship-grid td {
+        width: 32px;
+        min-width: 32px;
+        height: 32px;
+    }
 
-.battleship-grid thead th {
-    height: 36px;
-}
+    .battleship-grid thead th {
+        height: 30px;
+    }
 
-.battleship-grid tbody th {
-    width: 43px;
-}
+    .battleship-grid tbody th {
+        width: 32px;
+    }
 
-.battleship-grid .battleship-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: 42px;
-    height: 100%;
-    border: 0;
-    border-radius: 0;
-    padding: 0;
-    font-size: 1.18rem;
-    font-weight: 650;
-    line-height: 1;
-    text-decoration: none;
-}
-
-.battleship-grid .battleship-available {
-    background: #F4F1F3;
-    color: #71505B;
-    cursor: pointer;
-    font-weight: 500;
-}
-
-.battleship-grid .battleship-available:hover {
-    background: #E8E1E7;
-}
-
-.battleship-grid .battleship-available:focus-visible {
-    background: #E8E1E7;
-    outline: 3px solid #71505B;
-    outline-offset: -3px;
-}
-
-.battleship-grid .battleship-hit {
-    background: #C03945;
-    color: #fff;
-}
-
-.battleship-grid .battleship-miss {
-    background: #198754;
-    color: #fff;
-}
-
-.battleship-grid .battleship-ship {
-    background: #D7DAEB;
-    color: #51414A;
-}
-
-.battleship-grid .battleship-unavailable {
-    background: #F4F1F3;
-    color: #99919A;
+    .battleship-grid .battleship-cell {
+        min-height: 31px;
+        font-size: 1rem;
+    }
 }
