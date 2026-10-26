@@ -1,0 +1,11 @@
+﻿@model int
+
+<li class="nav-item">
+    <a asp-controller="FriendshipRequest" asp-action="Index" class="nav-link text-dark">
+        Solicitudes de amistad
+        @if (Model > 0)
+        {
+            <span class="badge bg-danger">@Model</span>
+        }
+    </a>
+</li>

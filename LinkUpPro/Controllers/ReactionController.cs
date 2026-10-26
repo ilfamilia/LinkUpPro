@@ -24,7 +24,7 @@ namespace LinkUpPro.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Toggle(ToggleReactionViewModel vm)
+        public async Task<IActionResult> Toggle(ToggleReactionViewModel vm, string? returnUrl)
         {
             AppUser? user = await _userManager.GetUserAsync(User);
 
@@ -43,12 +43,17 @@ namespace LinkUpPro.Controllers
                 return BadRequest(ModelState);
             }
 
-            ServiceResult result = await _reactionService.ToggleReactionAsync(vm.PostId, user.Id,
-                vm.ReactionType!.Value);
+            ServiceResult result = await _reactionService.ToggleReactionAsync(vm.PostId,
+                user.Id, vm.ReactionType!.Value);
 
             switch (result.Status)
             {
                 case OperationStatus.Success:
+                    if (Url.IsLocalUrl(returnUrl))
+                    {
+                        return LocalRedirect(returnUrl!);
+                    }
+
                     return RedirectToAction("Index", "Home");
 
                 case OperationStatus.ValidationError:

@@ -19,7 +19,7 @@ namespace LinkUpPro.Core.Application.Services
         private readonly IUserAccountStatusService _userAccountStatusService;
         private readonly IMapper _mapper;
 
-        public PostService(IPostRepository postRepository, IMapper mapper, IFriendshipRepository friendshipRepository, 
+        public PostService(IPostRepository postRepository, IMapper mapper, IFriendshipRepository friendshipRepository,
             IReactionRepository reactionRepository, ICommentRepository commentRepository,
             IUserAccountStatusService userAccountStatusService)
         {
@@ -253,7 +253,7 @@ namespace LinkUpPro.Core.Application.Services
 
         public async Task<ServiceResultWithData<PostDto>> GetVisiblePostByIdAsync(int postId, string userId)
         {
-            return await ExecuteAsync<PostDto>(async () => 
+            return await ExecuteAsync<PostDto>(async () =>
             {
                 if (string.IsNullOrWhiteSpace(userId))
                 {
@@ -431,41 +431,133 @@ namespace LinkUpPro.Core.Application.Services
             });
         }
 
-        public async Task<ServiceResultWithData<List<PostDto>>> GetFriendsPostsAsync(string userId)
+        public async Task<ServiceResultWithData<List<PostDto>>> GetFriendsPostsAsync(string userId, PostFilterDto? filter = null)
         {
             return await ExecuteAsync<List<PostDto>>(async () =>
             {
                 if (string.IsNullOrWhiteSpace(userId))
                 {
-                    return ServiceResultWithData<List<PostDto>>.Failure(OperationStatus.Unauthorized,
-                        "El usuario no está autenticado");
+                    return ServiceResultWithData<List<PostDto>>.Failure(
+                        OperationStatus.Unauthorized, "El usuario no está autenticado");
                 }
 
-                var friendshipsQuery = _friendshipRepository.GetAllQuery()
+                if (!await _userAccountStatusService.IsUserActiveAsync(userId))
+                {
+                    return ServiceResultWithData<List<PostDto>>.Failure(
+                        OperationStatus.Forbidden, "La cuenta del usuario no está activa");
+                }
+
+                if (filter != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(filter.SearchText) &&
+                        filter.SearchText.Trim().Length > 1000)
+                    {
+                        return ServiceResultWithData<List<PostDto>>.Failure(
+                            OperationStatus.ValidationError,
+                            "El texto de búsqueda no puede superar los 1000 caracteres.");
+                    }
+
+                    if (filter.MediaType.HasValue && !Enum.IsDefined(filter.MediaType.Value))
+                    {
+                        return ServiceResultWithData<List<PostDto>>.Failure(
+                            OperationStatus.ValidationError,
+                            "El tipo de contenido seleccionado no es válido.");
+                    }
+
+                    if (filter.StartDate.HasValue && filter.EndDate.HasValue &&
+                        filter.StartDate.Value > filter.EndDate.Value)
+                    {
+                        return ServiceResultWithData<List<PostDto>>.Failure(
+                            OperationStatus.ValidationError,
+                            "La fecha inicial no puede ser posterior a la fecha final.");
+                    }
+                }
+
+                IQueryable<Friendship> friendshipsQuery = _friendshipRepository.GetAllQuery()
+                    .AsNoTracking()
                     .Where(f => f.Status == FriendshipStatus.Active &&
                         (f.User1Id == userId || f.User2Id == userId));
 
-                List<Post> posts = await _postRepository.GetAllQuery()
+                List<string> friendIds = await friendshipsQuery
+                    .Select(f => f.User1Id == userId ? f.User2Id : f.User1Id)
+                    .Distinct()
+                    .ToListAsync();
+
+                HashSet<string> activeFriendIds = await _userAccountStatusService
+                    .GetActiveUserIdsAsync(friendIds);
+
+                string? selectedFriendId = filter?.FriendUserId?.Trim();
+
+                if (!string.IsNullOrWhiteSpace(selectedFriendId) &&
+                    !activeFriendIds.Contains(selectedFriendId))
+                {
+                    return ServiceResultWithData<List<PostDto>>.Failure(
+                        OperationStatus.ValidationError,
+                        "El usuario seleccionado ya no forma parte de su lista de amigos.");
+                }
+
+                if (activeFriendIds.Count == 0)
+                {
+                    return ServiceResultWithData<List<PostDto>>.Success([]);
+                }
+
+                string[] activeIds = activeFriendIds.ToArray();
+
+                IQueryable<Post> query = _postRepository.GetAllQuery()
                     .AsNoTracking()
                     .Where(p => !p.IsDeleted && p.UserId != userId &&
                         p.Privacy == PostPrivacy.FriendsOnly &&
+                        activeIds.Contains(p.UserId) &&
                         friendshipsQuery.Any(f =>
                             (f.User1Id == userId && f.User2Id == p.UserId) ||
-                            (f.User2Id == userId && f.User1Id == p.UserId)))
+                            (f.User2Id == userId && f.User1Id == p.UserId)));
+
+                if (filter != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(filter.SearchText))
+                    {
+                        string searchText = filter.SearchText.Trim().ToLowerInvariant();
+                        query = query.Where(p => p.Content.ToLower().Contains(searchText));
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(selectedFriendId))
+                    {
+                        query = query.Where(p => p.UserId == selectedFriendId);
+                    }
+
+                    if (filter.MediaType.HasValue)
+                    {
+                        query = query.Where(p => p.MediaType == filter.MediaType.Value);
+                    }
+
+                    if (filter.StartDate.HasValue)
+                    {
+                        DateTime startDate = filter.StartDate.Value
+                            .ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+                        query = query.Where(p => p.CreatedAt >= startDate);
+                    }
+
+                    if (filter.EndDate.HasValue)
+                    {
+                        DateTime endDate = filter.EndDate.Value
+                            .ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+                        query = query.Where(p => p.CreatedAt <= endDate);
+                    }
+
+                    if (filter.IsEdited.HasValue)
+                    {
+                        bool isEdited = filter.IsEdited.Value;
+                        query = query.Where(p => (p.UpdatedAt != null) == isEdited);
+                    }
+                }
+
+                List<Post> posts = await query
                     .OrderByDescending(p => p.CreatedAt)
                     .ToListAsync();
-
-                HashSet<string> activeUserIds = await _userAccountStatusService
-                    .GetActiveUserIdsAsync(posts.Select(p => p.UserId));
-
-                posts = posts
-                    .Where(p => activeUserIds.Contains(p.UserId))
-                    .ToList();
 
                 List<PostDto> postDtos = _mapper.Map<List<PostDto>>(posts);
 
                 await PopulatePostMetricsAsync(postDtos, userId);
-
                 PopulateYouTubeEmbedUrls(postDtos);
 
                 return ServiceResultWithData<List<PostDto>>.Success(postDtos);

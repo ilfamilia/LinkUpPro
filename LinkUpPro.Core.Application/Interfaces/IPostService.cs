@@ -13,7 +13,7 @@ namespace LinkUpPro.Core.Application.Interfaces
 
         Task<ServiceResultWithData<List<PostDto>>> GetMyPostsAsync(string userId, PostFilterDto? filter = null);
 
-        Task<ServiceResultWithData<List<PostDto>>> GetFriendsPostsAsync(string userId);
+        Task<ServiceResultWithData<List<PostDto>>> GetFriendsPostsAsync(string userId, PostFilterDto? filter = null);
 
         Task<ServiceResultWithData<PostDto>> GetMyPostByIdAsync(int postId, string userId);
 

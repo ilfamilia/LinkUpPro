@@ -1,0 +1,26 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.FriendshipRequest.FriendshipRequestConfirmationViewModel
+
+@{
+    ViewData["Title"] = "Confirmar solicitud";
+}
+
+<div class="container my-5">
+    <div class="card mx-auto">
+        <div class="card-body">
+            <h2 class="h4 mb-3">Confirmar operación</h2>
+            <p>@Model.Message</p>
+
+            <form asp-controller="FriendshipRequest" asp-action="@Model.Operation"
+                  method="post" asp-antiforgery="true">
+                <input type="hidden" name="requestId" value="@Model.RequestId" />
+                <div class="d-flex gap-2">
+                    <a asp-action="Index" class="btn btn-secondary">Volver atrás</a>
+                    <button type="submit"
+                            class="btn @(Model.Operation == "Accept" ? "btn-success" : "btn-danger")">
+                        @Model.ConfirmButtonText
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,25 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Friendship.FriendshipRemoveViewModel
+
+@{
+    ViewData["Title"] = "Eliminar amigo";
+}
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-body">
+            <h1 class="h4 mb-3">Eliminar amigo</h1>
+            <p>
+                ¿Está seguro que desea eliminar de sus amigos al usuario
+                <strong>@Model.UserName</strong>?
+            </p>
+            <form asp-controller="Friendship" asp-action="Remove" method="post" asp-antiforgery="true">
+                <input asp-for="FriendUserId" type="hidden" />
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <div class="d-flex gap-2">
+                    <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-danger">Aceptar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

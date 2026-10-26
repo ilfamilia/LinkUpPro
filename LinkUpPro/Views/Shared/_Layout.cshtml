@@ -26,6 +26,7 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Profile" asp-action="Index">Mi Perfil</a>
+                            @await Component.InvokeAsync("FriendshipRequestMenu")
                         </li>
                         <li class="nav-item">
                             <form asp-controller="Login" asp-action="Logout" method="post" asp-antiforgery="true">

@@ -1,0 +1,132 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.FriendshipRequest.FriendshipRequestIndexViewModel
+@using LinkUpPro.Core.Domain.Enums
+
+@{
+    ViewData["Title"] = "Solicitudes de amistad";
+}
+
+<div class="container my-4">
+    <h2>Solicitudes de amistad</h2>
+
+    @if (TempData["FriendshipRequestSuccess"] is string success)
+    {
+        <div class="alert alert-success" role="status">@success</div>
+    }
+    @if (TempData["FriendshipRequestError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+
+    <section class="mb-5" aria-labelledby="received-title">
+        <h3 id="received-title" class="h5 mt-4 mb-3">
+            Pendientes de responder (@Model.ReceivedPendingCount)
+        </h3>
+
+        @if (Model.ReceivedPending.Count == 0)
+        {
+            <p class="text-muted">No tiene solicitudes de amistad pendientes de responder.</p>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var request in Model.ReceivedPending)
+                {
+                    <div class="col-12 col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <partial name="_FriendshipUser" model="request.OtherUser" />
+                                <div class="small text-muted mt-3">
+                                    Enviada: @request.RequestedAt.ToString("dd/MM/yyyy HH:mm") UTC
+                                </div>
+                                <a asp-action="MutualFriends"
+                                   asp-route-otherUserId="@request.OtherUser.Id"
+                                   class="d-inline-block mt-2">
+                                    Amigos en común: @request.MutualFriendsCount
+                                </a>
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    <a asp-action="Confirm"
+                                       asp-route-requestId="@request.Id"
+                                       asp-route-operation="Accept"
+                                       class="btn btn-success btn-sm">Aceptar</a>
+                                    <a asp-action="Confirm"
+                                       asp-route-requestId="@request.Id"
+                                       asp-route-operation="Reject"
+                                       class="btn btn-outline-danger btn-sm">Rechazar</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <section aria-labelledby="sent-title">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <h3 id="sent-title" class="h5 mb-0">Solicitudes enviadas</h3>
+            <a asp-action="New" class="btn btn-primary">Nueva solicitud de amistad</a>
+        </div>
+
+        @if (Model.Sent.Count == 0)
+        {
+            <p class="text-muted">No ha enviado solicitudes de amistad.</p>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var request in Model.Sent)
+                {
+                    <div class="col-12 col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <partial name="_FriendshipUser" model="request.OtherUser" />
+                                <div class="small text-muted mt-3">
+                                    Enviada: @request.RequestedAt.ToString("dd/MM/yyyy HH:mm") UTC
+                                </div>
+                                <div class="small mt-1">
+                                    Estado:
+                                    <strong>
+                                        @(request.Status switch
+                                        {
+                                            FriendshipRequestStatus.Pending => "En espera de respuesta",
+                                            FriendshipRequestStatus.Accepted => "Aceptada",
+                                            FriendshipRequestStatus.Rejected => "Rechazada",
+                                            _ => "Cancelada"
+                                        })
+                                    </strong>
+                                </div>
+                                @if (request.RespondedAt.HasValue)
+                                {
+                                    <div class="small text-muted">
+                                        Respondida: @request.RespondedAt.Value.ToString("dd/MM/yyyy HH:mm") UTC
+                                    </div>
+                                }
+                                <a asp-action="MutualFriends"
+                                   asp-route-otherUserId="@request.OtherUser.Id"
+                                   class="d-inline-block mt-2">
+                                    Amigos en común: @request.MutualFriendsCount
+                                </a>
+                                <div class="mt-3">
+                                    @if (request.Status == FriendshipRequestStatus.Pending)
+                                    {
+                                        <a asp-action="Confirm"
+                                           asp-route-requestId="@request.Id"
+                                           asp-route-operation="Cancel"
+                                           class="btn btn-outline-danger btn-sm">Cancelar solicitud</a>
+                                    }
+                                    else if (request.Status is FriendshipRequestStatus.Accepted or FriendshipRequestStatus.Rejected)
+                                    {
+                                        <a asp-action="Confirm"
+                                           asp-route-requestId="@request.Id"
+                                           asp-route-operation="Hide"
+                                           class="btn btn-outline-secondary btn-sm">Eliminar del historial</a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+</div>
