@@ -6,12 +6,13 @@
     var received = Model.ReceivedAttacks.ToDictionary(a => (a.Row, a.Column));
 }
 
+<link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/Battleship/Attack.css" asp-append-version="true" />
 
-<div class="container mt-4">
-    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+<div class="container battleship-page battleship-page--wide mt-4 mb-5">
+    <div class="battleship-page-header d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0">Mis barcos — Partida #@Model.GameId</h1>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
             @if (Model.Status == LinkUpPro.Core.Domain.Enums.BattleshipGameStatus.SettingUp)
             {
                 <a asp-action="Setup" asp-route-gameId="@Model.GameId"
@@ -26,9 +27,13 @@
         </div>
     </div>
 
-    <p class="small text-muted">Azul: tus barcos. Rojo: impacto recibido. Verde: fallo recibido.</p>
+    <div class="battleship-legend" aria-label="Leyenda del tablero">
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--ship"></span> Mis barcos</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--hit"></span> Impacto recibido</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--miss"></span> Fallo recibido</span>
+    </div>
 
-    <div class="battleship-scroll">
+    <div class="battleship-scroll battleship-grid-wrap" tabindex="0" aria-label="Tablero propio; desplázate horizontalmente si es necesario">
         <table class="table table-bordered battleship-grid" aria-label="Tablero propio de doce por doce">
             <thead>
                 <tr>

@@ -4,11 +4,13 @@
     ViewData["Title"] = "Iniciar partida";
 }
 
-<div class="container mt-4">
-    <h1 class="h2 mb-3">Iniciar partida de Battleship</h1>
+<link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
+
+<div class="container battleship-page battleship-page--medium mt-4 mb-5">
+    <h1 class="h2 mb-2">Iniciar partida de Battleship</h1>
     <p class="text-muted">Selecciona un amigo activo con quien no tengas otra partida sin finalizar.</p>
 
-    <form asp-action="New" method="get" class="row g-2 align-items-end mb-4">
+    <form asp-action="New" method="get" class="row g-2 align-items-end battleship-filter-panel mb-4">
         <div class="col-12 col-md-7">
             <label for="searchText" class="form-label">Buscar por nombre de usuario</label>
             <input id="searchText" name="searchText" value="@Model.SearchText"
@@ -29,11 +31,11 @@
 
         @if (Model.Opponents.Count == 0)
         {
-            <p class="text-muted">
+            <div class="battleship-empty-state">
                 @(string.IsNullOrWhiteSpace(Model.SearchText)
                     ? "No tiene amigos disponibles para iniciar una partida."
                     : "No se encontraron amigos disponibles con ese nombre de usuario.")
-            </p>
+            </div>
         }
         else
         {
@@ -44,7 +46,7 @@
                         ? Url.Content("~/Images/Defaults/default-profile.png")
                         : Url.Content($"~/{opponent.ProfileImage}");
                     <div class="col-12 col-md-6">
-                        <div class="card h-100">
+                        <div class="card battleship-opponent-card h-100">
                             <div class="card-body d-flex gap-3 align-items-center">
                                 <input class="form-check-input flex-shrink-0"
                                        type="radio" name="SelectedOpponentUserId"
@@ -53,7 +55,7 @@
                                 <label class="d-flex align-items-center gap-3 flex-grow-1"
                                        for="opponent-@opponent.Id">
                                     <img src="@imagePath" alt="Foto de @opponent.UserName"
-                                         width="52" height="52" class="rounded-circle object-fit-cover" />
+                                         width="52" height="52" class="rounded-circle object-fit-cover battleship-avatar" />
                                     <span class="fw-semibold">@opponent.UserName</span>
                                 </label>
                             </div>
@@ -62,7 +64,7 @@
                 }
             </div>
         }
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
             <a asp-action="Index" class="btn btn-secondary">Volver atrás</a>
             <button type="submit" class="btn btn-primary"
                     disabled="@(Model.Opponents.Count == 0)">

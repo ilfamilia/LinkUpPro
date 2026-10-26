@@ -6,10 +6,11 @@
     HashSet<(int, int)> occupied = Model.OccupiedCells
         .Select(cell => (cell.Row, cell.Column)).ToHashSet();
 }
+<link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/Battleship/Setup.css" asp-append-version="true" />
 
-<div class="container mt-4 mb-5">
-    <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
+<div class="container battleship-page battleship-page--wide mt-4 mb-5">
+    <div class="battleship-page-header d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
         <h1 class="h3 mb-0">Partida #@Model.GameId — Posicionar barcos</h1>
         <div class="d-flex flex-wrap gap-2">
             <a asp-action="Surrender" asp-route-gameId="@Model.GameId"
@@ -27,7 +28,7 @@
         <div class="alert alert-success" role="status">@success</div>
     }
 
-    <p>Barcos colocados: <strong>@Model.PlacedShipCount de 5</strong>.</p>
+    <p class="battleship-placement-progress">Barcos colocados: <strong>@Model.PlacedShipCount de 5</strong>.</p>
 
     @if (Model.MyShipsReady)
     {
@@ -39,7 +40,7 @@
     }
     else
     {
-        <div class="card mb-4">
+        <div class="card battleship-ship-picker mb-4">
             <div class="card-body">
                 <h2 class="h5 mb-3">Selecciona el próximo barco</h2>
                 <div class="d-flex gap-2 flex-wrap">
@@ -57,9 +58,14 @@
         </div>
     }
 
-    <h2 class="h5">Tu tablero (12 × 12)</h2>
-    <p class="small text-muted">Las casillas azules representan tus barcos. El oponente no puede verlas.</p>
-    <div class="battleship-board" role="img" aria-label="Tablero de 12 por 12, con las casillas propias ocupadas resaltadas">
+    <h2 class="h5 battleship-section-title">Tu tablero (12 × 12)</h2>
+    <p class="small text-muted">Solo tú puedes ver la ubicación de tus barcos.</p>
+    <div class="battleship-legend" aria-label="Leyenda del tablero">
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--ship"></span> Tu barco</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--empty"></span> Libre</span>
+    </div>
+    <div class="battleship-board-scroll" tabindex="0" aria-label="Tablero de posicionamiento; desplázate horizontalmente si es necesario">
+        <div class="battleship-board" role="img" aria-label="Tablero de 12 por 12, con las casillas propias ocupadas resaltadas">
         @for (int row = 0; row < 12; row++)
         {
             @for (int column = 0; column < 12; column++)
@@ -69,6 +75,7 @@
                      title="Fila @(row + 1), columna @(column + 1): @(used ? "barco" : "vacía")"></div>
             }
         }
+        </div>
     </div>
     @if (Model.MyShipsReady)
     {

@@ -1,33 +1,78 @@
-﻿.battleship-board {
-    width: min(100%, 570px);
+﻿/* Battleship: selección y visualización de posiciones propias, 12 x 12. */
+.battleship-board-scroll {
+    width: 100%;
+    max-width: 604px;
+    overflow-x: auto;
+    padding: .2rem .2rem .55rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.battleship-board-scroll:focus-visible {
+    outline: 2px solid var(--linkup-primary, #71505B);
+    outline-offset: 1px;
+}
+
+.battleship-board {
     display: grid;
+    width: 576px;
+    min-width: 456px;
+    max-width: 100%;
     grid-template-columns: repeat(12, minmax(0, 1fr));
-    gap: 2px;
-    background-color: #b8cad7;
-    border: 2px solid #819bb0;
-    padding: 2px;
-    border-radius: 6px;
+    gap: 0;
+    background: #fff;
+    border: 1px solid #B5A3A9;
+    border-radius: .25rem;
+    overflow: hidden;
 }
 
-.battleship-cell {
-    display: block;
-    aspect-ratio: 1;
+.battleship-board .battleship-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1 / 1;
     min-width: 0;
+    border-right: 1px solid #D0C9CD;
+    border-bottom: 1px solid #D0C9CD;
+    background: #F4F1F3;
+    text-decoration: none;
+    position: relative;
+}
+
+.battleship-board .battleship-cell:nth-child(12n) {
+    border-right: 0;
+}
+
+.battleship-board .battleship-cell:nth-last-child(-n+12) {
+    border-bottom: 0;
+}
+
+.battleship-board .battleship-cell.is-occupied {
+    background: #D7DAEB;
+    color: #45364E;
+}
+
+.battleship-board .battleship-cell.is-occupied::after {
+    content: "";
+    width: 38%;
+    height: 38%;
+    background: #71505B;
     border-radius: 2px;
-    background-color: #edf5fa;
-    border: 1px solid #c8d9e6;
 }
 
-.battleship-cell.is-occupied {
-    background-color: #276da3;
-    border-color: #1b4e75;
+.battleship-board .battleship-cell.is-selectable {
+    cursor: pointer;
+    background: #F4F1F3;
 }
 
-.battleship-cell.is-selectable:hover,
-.battleship-cell.is-selectable:focus-visible {
-    background-color: #a6d5ec;
-    outline: 2px solid #205781;
-    outline-offset: -2px;
+.battleship-board .battleship-cell.is-selectable:hover {
+    background: #E8E1E7;
+}
+
+.battleship-board .battleship-cell.is-selectable:focus-visible {
+    background: #E8E1E7;
+    outline: 3px solid #71505B;
+    outline-offset: -3px;
+    z-index: 1;
 }
 
 .battleship-direction-card {

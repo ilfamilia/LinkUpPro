@@ -6,9 +6,14 @@
     DateTime nowUtc = DateTime.UtcNow;
 }
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-        <h1 class="h2 mb-0">Battleship</h1>
+<link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
+
+<div class="container battleship-page battleship-page--wide mt-4 mb-5">
+    <div class="battleship-page-header d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h1 class="h2 mb-1">Battleship</h1>
+            <p class="text-muted mb-0">Juega con tus amigos y consulta tus partidas.</p>
+        </div>
         <a asp-controller="Battleship" asp-action="New" class="btn btn-primary">
             Iniciar nueva partida
         </a>
@@ -26,28 +31,31 @@
     <section class="mb-4" aria-label="Estadísticas del historial">
         <div class="row g-3">
             <div class="col-12 col-md-4">
-                <div class="card"><div class="card-body">
-                    <strong>Partidas jugadas:</strong> @Model.TotalGames
+                <div class="card battleship-stat battleship-stat--total"><div class="card-body">
+                    <p class="battleship-stat__label">Partidas jugadas</p>
+                    <p class="battleship-stat__value">@Model.TotalGames</p>
                 </div></div>
             </div>
             <div class="col-12 col-md-4">
-                <div class="card"><div class="card-body">
-                    <strong>Ganadas:</strong> @Model.WonGames
+                <div class="card battleship-stat battleship-stat--won"><div class="card-body">
+                    <p class="battleship-stat__label">Ganadas</p>
+                    <p class="battleship-stat__value">@Model.WonGames</p>
                 </div></div>
             </div>
             <div class="col-12 col-md-4">
-                <div class="card"><div class="card-body">
-                    <strong>Perdidas:</strong> @Model.LostGames
+                <div class="card battleship-stat battleship-stat--lost"><div class="card-body">
+                    <p class="battleship-stat__label">Perdidas</p>
+                    <p class="battleship-stat__value">@Model.LostGames</p>
                 </div></div>
             </div>
         </div>
     </section>
 
     <section class="mb-5" aria-labelledby="active-games-title">
-        <h2 id="active-games-title" class="h4 mb-3">Partidas activas</h2>
+        <h2 id="active-games-title" class="h4 battleship-section-title mb-3">Partidas activas</h2>
         @if (Model.ActiveGames.Count == 0)
         {
-            <p class="text-muted">No tiene partidas activas.</p>
+            <div class="battleship-empty-state">No tiene partidas activas.</div>
         }
         else
         {
@@ -60,14 +68,14 @@
                     double hours = Math.Max(0, (nowUtc - game.CreatedAt).TotalHours);
 
                     <div class="col-12 col-lg-6">
-                        <article class="card h-100">
+                        <article class="card battleship-game-card h-100">
                             <div class="card-body">
                                 <div class="d-flex align-items-center gap-3 mb-3">
                                     <img src="@imagePath" alt="Foto de @game.OpponentUserName"
-                                         width="60" height="60" class="rounded-circle object-fit-cover" />
+                                         width="60" height="60" class="rounded-circle object-fit-cover battleship-avatar" />
                                     <div>
                                         <h3 class="h6 mb-1">@game.OpponentUserName</h3>
-                                        <span class="badge bg-primary">
+                                        <span class="badge bg-primary battleship-status-badge">
                                             @(game.Status == BattleshipGameStatus.SettingUp
                                                 ? "Posicionando barcos" : "En curso")
                                         </span>
@@ -94,15 +102,15 @@
     </section>
 
     <section aria-labelledby="history-title" class="mb-4">
-        <h2 id="history-title" class="h4 mb-3">Historial de partidas</h2>
+        <h2 id="history-title" class="h4 battleship-section-title mb-3">Historial de partidas</h2>
         @if (Model.FinishedGames.Count == 0)
         {
-            <p class="text-muted">Todavía no tiene partidas finalizadas.</p>
+            <div class="battleship-empty-state">Todavía no tiene partidas finalizadas.</div>
         }
         else
         {
-            <div class="table-responsive">
-                <table class="table table-striped align-middle">
+            <div class="table-responsive battleship-history">
+                <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
                             <th scope="col">Oponente</th>

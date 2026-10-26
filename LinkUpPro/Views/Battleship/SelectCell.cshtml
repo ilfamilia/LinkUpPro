@@ -4,16 +4,22 @@
     HashSet<(int, int)> occupied = Model.Placement.OccupiedCells
         .Select(cell => (cell.Row, cell.Column)).ToHashSet();
 }
+<link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/Battleship/Setup.css" asp-append-version="true" />
 
-<div class="container mt-4 mb-5">
-    <h1 class="h3">Seleccionar casilla inicial</h1>
+<div class="container battleship-page battleship-page--wide mt-4 mb-5">
+    <h1 class="h2 mb-2">Seleccionar casilla inicial</h1>
     <p>Barco @Model.ShipNumber (@Model.ShipSize casillas). Selecciona una casilla libre del tablero.</p>
     @if (TempData["BattleshipPlacementError"] is string error)
     {
         <div class="alert alert-danger" role="alert">@error</div>
     }
-    <div class="battleship-board" aria-label="Seleccionar una casilla inicial libre">
+    <div class="battleship-legend" aria-label="Leyenda del tablero">
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--ship"></span> Ocupada</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--empty"></span> Disponible</span>
+    </div>
+    <div class="battleship-board-scroll" tabindex="0" aria-label="Selección de casilla inicial, desplázate horizontalmente si es necesario">
+        <div class="battleship-board" aria-label="Seleccionar una casilla inicial libre">
         @for (int row = 0; row < 12; row++)
         {
             @for (int column = 0; column < 12; column++)
@@ -35,6 +41,7 @@
                 }
             }
         }
+        </div>
     </div>
     <a asp-action="Setup" asp-route-gameId="@Model.Placement.GameId"
        class="btn btn-secondary mt-3">Volver a los barcos</a>

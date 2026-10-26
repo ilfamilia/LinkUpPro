@@ -14,11 +14,12 @@
     };
 }
 
+<link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/Battleship/Attack.css" asp-append-version="true" />
 
-<div class="container mt-4">
+<div class="container battleship-page battleship-page--wide mt-4 mb-5">
     <h1 class="h3">Resultado — Partida #@Model.GameId</h1>
-    <div class="card mb-3">
+    <div class="card battleship-result-card mb-4">
         <div class="card-body">
             <p class="mb-1">Oponente: <strong>@Model.OpponentUserName</strong></p>
             <p class="mb-1">Resultado: <strong>@(Model.DidIWin ? "Victoria" : "Derrota")</strong></p>
@@ -29,10 +30,15 @@
         </div>
     </div>
 
-    <h2 class="h5">@(Model.ShowOpponentBoard ? "Tablero de ataque del oponente" : "Mi tablero de ataque final")</h2>
-    <p class="text-muted small">Rojo: impacto. Verde: fallo. Las casillas no se pueden modificar.</p>
+    <h2 class="h5 battleship-section-title">@(Model.ShowOpponentBoard ? "Tablero de ataque del oponente" : "Mi tablero de ataque final")</h2>
+    <p class="text-muted small">Este tablero es de consulta y no permite nuevos ataques.</p>
+    <div class="battleship-legend" aria-label="Leyenda del tablero">
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--hit"></span> Impacto</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--miss"></span> Fallo</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--empty"></span> Sin atacar</span>
+    </div>
 
-    <div class="battleship-scroll mb-4">
+    <div class="battleship-scroll battleship-grid-wrap mb-4" tabindex="0" aria-label="Tablero histórico; desplázate horizontalmente si es necesario">
         <table class="table table-bordered battleship-grid" aria-label="Tablero histórico de ataque de doce por doce">
             <thead>
                 <tr>

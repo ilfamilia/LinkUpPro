@@ -6,10 +6,11 @@
     var attackCells = Model.Attacks.ToDictionary(a => (a.Row, a.Column));
 }
 
+<link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/Battleship/Attack.css" asp-append-version="true" />
 
-<div class="container mt-4">
-    <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center mb-3">
+<div class="container battleship-page battleship-page--wide mt-4 mb-5">
+    <div class="battleship-page-header d-flex flex-wrap justify-content-between gap-3 align-items-center mb-3">
         <h1 class="h3 mb-0">Tablero de ataque — Partida #@Model.GameId</h1>
         <div class="d-flex gap-2 flex-wrap">
             <a asp-action="AttackBoard" asp-route-gameId="@Model.GameId"
@@ -57,9 +58,13 @@
         </div>
     }
 
-    <p class="small text-muted">Rojo: impacto. Verde: fallo. Gris: casilla sin atacar.</p>
+    <div class="battleship-legend" aria-label="Leyenda del tablero">
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--hit"></span> Impacto</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--miss"></span> Fallo</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--empty"></span> Sin atacar</span>
+    </div>
 
-    <div class="battleship-scroll">
+    <div class="battleship-scroll battleship-grid-wrap" tabindex="0" aria-label="Tablero de ataque; desplázate horizontalmente si es necesario">
         <table class="table table-bordered battleship-grid" aria-label="Tablero de ataque de doce por doce">
             <thead>
                 <tr>

@@ -1,0 +1,279 @@
+﻿.battleship-page {
+    width: 100%;
+    margin-inline: auto;
+    color: var(--linkup-text, #302830);
+}
+
+.battleship-page--wide {
+    max-width: 1100px;
+}
+
+.battleship-page--medium {
+    max-width: 780px;
+}
+
+.battleship-page-header {
+    padding-bottom: .5rem;
+}
+
+.battleship-section-title {
+    font-weight: 600;
+}
+
+.battleship-page .text-muted {
+    color: var(--linkup-muted, #716B71) !important;
+}
+
+.battleship-stat .card-body {
+    padding: 1.3rem 1.5rem;
+}
+
+.battleship-stat__label {
+    margin-bottom: .5rem;
+    font-size: .875rem;
+    font-weight: 500;
+    color: var(--linkup-muted, #716B71);
+}
+
+.battleship-stat__value {
+    margin: 0;
+    color: var(--linkup-primary, #71505B);
+    font-size: 2rem;
+    line-height: 1.15;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.battleship-stat--won .battleship-stat__value {
+    color: #198754;
+}
+
+.battleship-stat--lost .battleship-stat__value {
+    color: #9B2938;
+}
+
+.battleship-game-card .card-body {
+    padding: 1.4rem;
+}
+
+.battleship-avatar {
+    flex: none;
+    border: 1px solid var(--linkup-border, #DBD9D9);
+    object-fit: cover;
+}
+
+.battleship-status-badge {
+    font-size: .75rem;
+    font-weight: 500;
+    padding: .4rem .65rem;
+}
+
+.battleship-empty-state {
+    border: 1px dashed var(--linkup-border, #DBD9D9);
+    background: #fff;
+    border-radius: .65rem;
+    color: var(--linkup-muted, #716B71);
+    padding: 1.35rem 1.5rem;
+    font-size: .9375rem;
+}
+
+.battleship-history {
+    border: 1px solid var(--linkup-border, #DBD9D9);
+    border-radius: .65rem;
+    background: #fff;
+}
+
+.battleship-history .table > :not(caption) > * > * {
+    padding: .9rem 1rem;
+}
+
+.battleship-history .table thead th {
+    background-color: #F4F1F3;
+    color: #51414A;
+    font-weight: 600;
+    font-size: .875rem;
+    border-bottom-color: var(--linkup-border, #DBD9D9);
+    white-space: nowrap;
+}
+
+.battleship-history .table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.battleship-filter-panel {
+    padding: 1.25rem 1.5rem;
+    margin-left: 0;
+    margin-right: 0;
+    background: #fff;
+    border: 1px solid var(--linkup-border, #DBD9D9);
+    border-radius: .65rem;
+}
+
+.battleship-opponent-card {
+    transition: border-color .15s ease, background-color .15s ease;
+}
+
+.battleship-opponent-card .card-body {
+    padding: 1rem 1.2rem;
+}
+
+.battleship-opponent-card:hover {
+    border-color: var(--linkup-secondary, #B5A3A9);
+}
+
+.battleship-opponent-card:has(input[type="radio"]:checked) {
+    border-color: var(--linkup-primary, #71505B);
+    background-color: #FCF9FA;
+}
+
+.battleship-opponent-card label {
+    cursor: pointer;
+    min-width: 0;
+}
+
+.battleship-opponent-card label span {
+    overflow-wrap: anywhere;
+}
+
+.battleship-opponent-card input {
+    cursor: pointer;
+}
+
+.battleship-details-card .card-body,
+.battleship-result-card .card-body,
+.battleship-confirm-card .card-body,
+.battleship-direction-card .card-body {
+    padding: 1.5rem;
+}
+
+.battleship-details-list dt {
+    color: var(--linkup-muted, #716B71);
+    font-weight: 500;
+}
+
+.battleship-details-list dt,
+.battleship-details-list dd {
+    padding-block: .3rem;
+}
+
+.battleship-details-list dd {
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.battleship-next-step {
+    line-height: 1.8;
+}
+
+.battleship-next-step .btn {
+    margin-top: .35rem;
+    margin-bottom: .35rem;
+}
+
+.battleship-placement-progress {
+    display: inline-block;
+    background: #F0F0FA;
+    color: #514C78;
+    padding: .7rem 1rem;
+    border-radius: .4rem;
+    border: 1px solid #D7DAEB;
+    margin-bottom: 1.25rem;
+}
+
+.battleship-ship-picker .card-body {
+    padding: 1.5rem;
+}
+
+.battleship-confirm-warning {
+    background: #FFF7E9;
+    border-left: 3px solid #C58A2D;
+    color: #74541E;
+    padding: 1rem;
+    border-radius: .35rem;
+    font-size: .9375rem;
+}
+
+/* Leyenda y colores compartidos entre posicionamiento y ataque. */
+.battleship-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .65rem 1.25rem;
+    padding: .6rem 0;
+    margin: 0 0 .9rem;
+}
+
+.battleship-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    font-size: .875rem;
+    color: #51414A;
+}
+
+.battleship-legend__swatch {
+    display: inline-block;
+    width: 17px;
+    height: 17px;
+    border-radius: 2px;
+    border: 1px solid #C7BFC5;
+    flex-shrink: 0;
+}
+
+.battleship-legend__swatch--hit {
+    background: #C03945;
+    border-color: #A92D39;
+}
+
+.battleship-legend__swatch--miss {
+    background: #198754;
+    border-color: #136B41;
+}
+
+.battleship-legend__swatch--ship {
+    background: #D7DAEB;
+    border-color: #9889A5;
+}
+
+.battleship-legend__swatch--empty {
+    background: #F4F1F3;
+}
+
+.battleship-page .btn-outline-danger {
+    --bs-btn-color: #C03945;
+    --bs-btn-border-color: #C03945;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #C03945;
+    --bs-btn-hover-border-color: #C03945;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #A92D39;
+    --bs-btn-active-border-color: #A92D39;
+}
+
+.battleship-page .btn-outline-info {
+    --bs-btn-color: #514C78;
+    --bs-btn-border-color: #7773A4;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #7773A4;
+    --bs-btn-hover-border-color: #7773A4;
+}
+
+@media (max-width: 575.98px) {
+    .battleship-stat .card-body,
+    .battleship-game-card .card-body,
+    .battleship-details-card .card-body,
+    .battleship-result-card .card-body,
+    .battleship-confirm-card .card-body,
+    .battleship-direction-card .card-body,
+    .battleship-ship-picker .card-body {
+        padding: 1.1rem;
+    }
+
+    .battleship-filter-panel {
+        padding: 1rem;
+    }
+
+    .battleship-history .table > :not(caption) > * > * {
+        padding: .7rem;
+    }
+}
