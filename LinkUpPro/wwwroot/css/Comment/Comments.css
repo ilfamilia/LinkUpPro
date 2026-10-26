@@ -1,6 +1,102 @@
-﻿.comment-avatar {
+﻿/* Conversaciones reutilizadas por Home y Amigos. */
+.comment-avatar {
     width: 36px;
     height: 36px;
     object-fit: cover;
     flex-shrink: 0;
+    border: 1px solid var(--linkup-border, #DBD9D9);
+}
+
+.comment-item {
+    margin: 0 0 1rem;
+    padding: .1rem 0 .1rem .9rem;
+    border-left: 2px solid var(--linkup-border, #DBD9D9);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.comment-item__header {
+    display: flex;
+    gap: .625rem;
+    align-items: center;
+    min-width: 0;
+    margin-bottom: .6rem;
+}
+
+.comment-item__author {
+    min-width: 0;
+}
+
+.comment-item__username {
+    font-size: .9rem;
+    font-weight: 600;
+}
+
+.comment-item__date {
+    font-size: .775rem;
+    color: var(--linkup-muted, #716B71);
+}
+
+.comment-item__content {
+    margin-bottom: .65rem;
+    white-space: pre-wrap;
+    font-size: .9375rem;
+    line-height: 1.55;
+}
+
+.comment-item__removed {
+    color: var(--linkup-muted, #716B71);
+    font-size: .875rem;
+    font-style: italic;
+}
+
+.comment-item__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin-bottom: .5rem;
+}
+
+.comment-item__reply {
+    margin-bottom: .15rem;
+}
+
+.comment-replies {
+    margin: .9rem 0 0 .85rem;
+}
+
+.comment-compose .form-control {
+    min-width: 0;
+}
+
+.comment-compose textarea {
+    resize: vertical;
+}
+
+.comment-form-page {
+    width: 100%;
+    max-width: 720px;
+    margin-inline: auto;
+}
+
+.comment-form-page--confirm {
+    max-width: 580px;
+}
+
+.comment-form-card .card-body {
+    padding: 1.5rem;
+}
+
+@media (max-width: 575.98px) {
+    .comment-item {
+        padding-left: .6rem;
+    }
+
+    .comment-replies {
+        margin-left: .5rem;
+    }
+
+    .comment-form-card .card-body {
+        padding: 1.125rem;
+    }
 }

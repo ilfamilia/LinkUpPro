@@ -7,69 +7,55 @@
         ViewData["CommentParentId"]?.ToString() == Model.Id.ToString();
 
     string? currentUserId = ViewData["CurrentUserId"]?.ToString();
-
     string returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}#comments-{Model.PostId}";
+    string profileImagePath = string.IsNullOrWhiteSpace(Model.UserProfilePicturePath)
+        ? Url.Content("~/Images/Defaults/default-profile.png")
+        : Url.Content($"~/{Model.UserProfilePicturePath}");
 }
 
-<div class="border-start ps-3 mb-3" id="comment-@Model.Id">
+<div class="comment-item" id="comment-@Model.Id">
     @if (Model.IsDeleted)
     {
-        <p class="text-muted fst-italic">
-            Este comentario fue eliminado.
-        </p>
+        <p class="comment-item__removed mb-2">Este comentario fue eliminado.</p>
     }
     else
     {
-        string profileImagePath = string.IsNullOrWhiteSpace(Model.UserProfilePicturePath)
-                ? Url.Content("~/Images/Defaults/default-profile.png")
-                : Url.Content($"~/{Model.UserProfilePicturePath}");
-
-        <div class="d-flex align-items-center mb-2">
+        <div class="comment-item__header">
             <img src="@profileImagePath" alt="Foto de perfil de @Model.UserName"
-                 class="comment-avatar rounded-circle me-2" />
-
-            <div>
-                <div class="fw-semibold">@Model.UserName</div>
-
-                <small class="text-muted">
+                 class="comment-avatar rounded-circle" />
+            <div class="comment-item__author">
+                <div class="comment-item__username">@Model.UserName</div>
+                <small class="comment-item__date">
                     @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC
-
                     @if (Model.UpdatedAt.HasValue)
                     {
-                        <span>(Editado)</span>
+                        <span> · Editado</span>
                     }
                 </small>
             </div>
         </div>
 
-        <p class="mb-2">@Model.Content</p>
-        
+        <p class="comment-item__content">@Model.Content</p>
+
         @if (!string.IsNullOrWhiteSpace(currentUserId) && Model.UserId == currentUserId)
         {
-            <div class="d-flex gap-2 mb-2">
+            <div class="comment-item__actions">
                 <a asp-controller="Comment" asp-action="Edit" asp-route-commentId="@Model.Id"
-                   asp-route-returnUrl="@returnUrl" class="btn btn-outline-warning btn-sm">
-                    Editar
-                </a>
-
+                   asp-route-returnUrl="@returnUrl" class="btn btn-outline-secondary btn-sm">Editar</a>
                 <a asp-controller="Comment" asp-action="Delete" asp-route-commentId="@Model.Id"
-                   asp-route-returnUrl="@returnUrl" class="btn btn-outline-danger btn-sm">
-                    Eliminar
-                </a>
+                   asp-route-returnUrl="@returnUrl" class="btn btn-outline-danger btn-sm">Eliminar</a>
             </div>
         }
     }
-    
+
     @if (ViewData["CommentsEnabled"] is true && !Model.IsDeleted)
     {
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse"
-                data-bs-target="#reply-form-@Model.Id" aria-expanded="@(showReplyForm ? "true" : "false")"
-                aria-controls="reply-form-@Model.Id">
-            Responder
-        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm comment-item__reply"
+                data-bs-toggle="collapse" data-bs-target="#reply-form-@Model.Id"
+                aria-expanded="@(showReplyForm ? "true" : "false")"
+                aria-controls="reply-form-@Model.Id">Responder</button>
 
         <div class="collapse @(showReplyForm ? "show" : "")" id="reply-form-@Model.Id">
-
             <partial name="~/Views/Comment/_CreateCommentForm.cshtml"
                      model="new CreateCommentViewModel
                      {
@@ -81,7 +67,7 @@
 
     @if (Model.Replies.Count > 0)
     {
-        <div class="ms-3 mt-3">
+        <div class="comment-replies">
             @foreach (var reply in Model.Replies)
             {
                 <partial name="~/Views/Home/_CommentItem.cshtml" model="reply" />
