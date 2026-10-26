@@ -1,31 +1,37 @@
 @model EmailConfirmationViewModel
-
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Reenviar correo de activación";
 }
-<br>
-<div class="card text-center">
-    <div class="card-header h5 text-white bg-primary">Activar tu cuenta</div>
-    <div class="card-body px-5">
-        <p class="card-text py-2">
-          Introduce tu nombre de usuario y te enviaremos un correo electrónico con instrucciones para activar tu cuenta.
-        </p>
-        
+
+<div class="card auth-card">
+    <div class="card-body">
+        <h1 class="auth-title">Reenviar activación</h1>
+        <p class="auth-description">Introduce tu nombre de usuario para solicitar un nuevo enlace de activación.</p>
+
         @if (TempData["ActivationResendMessage"] is string message)
         {
-            <div class="alert alert-info">@message</div>
+            <div class="alert alert-info" role="status">@message</div>
         }
 
-        <form asp-controller="Login" asp-action="ResendEmailActivation" method="POST">
-          <div data-mdb-input-init class="form-outline">
-              <input asp-for="UserName" type="text" class="form-control my-3" placeholder="Introduzca su nombre de usuario"/>
-              <span asp-validation-for="UserName" class="text-danger"></span>
-          </div>
-          <button type="submit" data-mdb-ripple-init class="btn btn-primary w-100">Activar cuenta</button>
+        <form asp-controller="Login" asp-action="ResendEmailActivation" method="post" asp-antiforgery="true">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+            <div class="mb-4">
+                <label asp-for="UserName" class="form-label">Nombre de usuario</label>
+                <input asp-for="UserName" class="form-control" autocomplete="username"
+                       placeholder="Ingresa tu usuario" />
+                <span asp-validation-for="UserName" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Reenviar enlace</button>
         </form>
-        <div class="d-flex justify-content-between mt-4">
-            <a class="" asp-controller="Login" asp-action="Index">Iniciar sesión</a>
-            <a class="" asp-controller="Login" asp-action="Register">Registrarse</a>
+
+        <div class="auth-divider"></div>
+        <div class="auth-links">
+            <a asp-controller="Login" asp-action="Index">Volver atrás</a>
+            <a asp-controller="Login" asp-action="Register">Registrarse</a>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

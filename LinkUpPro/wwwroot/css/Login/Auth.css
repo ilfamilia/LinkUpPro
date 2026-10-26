@@ -1,0 +1,150 @@
+﻿/* Pantallas públicas de autenticación de LinkUp Pro. */
+.auth-layout {
+    background-color: #FAFAFA;
+}
+
+.auth-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 2.5rem 1rem 1.5rem;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 600px;
+}
+
+.auth-brand-block {
+    margin-bottom: 1.5rem;
+}
+
+.auth-brand {
+    color: #71505B;
+    font-size: 1.75rem;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: -.025em;
+    text-decoration: none;
+}
+
+.auth-brand:hover {
+    color: #5C404A;
+}
+
+.auth-tagline {
+    color: #716B71;
+    margin: .4rem 0 0;
+    font-size: .875rem;
+}
+
+.auth-card {
+    max-width: 440px;
+    margin: 0 auto;
+}
+
+.auth-card--wide {
+    max-width: 600px;
+}
+
+.auth-card .card-body {
+    padding: 2rem;
+}
+
+.auth-title {
+    margin-bottom: .5rem;
+    font-size: 1.375rem;
+    text-align: center;
+}
+
+.auth-description {
+    color: #716B71;
+    font-size: .9375rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.auth-divider {
+    border-top: 1px solid #DBD9D9;
+    margin: 1.5rem 0;
+}
+
+.auth-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem 1.25rem;
+    font-size: .875rem;
+}
+
+.auth-links a {
+    text-decoration: none;
+}
+
+.auth-links a:hover {
+    text-decoration: underline;
+}
+
+.auth-feedback .alert {
+    margin-bottom: .75rem;
+}
+
+.auth-card .text-danger.field-validation-error,
+.auth-card .field-validation-error {
+    display: block;
+    margin-top: .35rem;
+    font-size: .8125rem;
+}
+
+.auth-card .validation-summary-errors {
+    color: #902C38;
+    background-color: #FCEFF0;
+    border-left: 3px solid #C03945;
+    border-radius: .35rem;
+    padding: .75rem 1rem;
+    font-size: .875rem;
+}
+
+.auth-card .validation-summary-valid {
+    display: none;
+}
+
+.auth-card .progress {
+    height: .55rem;
+    border-radius: .4rem;
+}
+
+.auth-card .form-text {
+    font-size: .8125rem;
+}
+
+.auth-card .input-group > .btn {
+    white-space: nowrap;
+}
+
+.auth-footer {
+    color: #716B71;
+    font-size: .8125rem;
+    padding: 1rem;
+}
+
+@media (max-width: 575.98px) {
+    .auth-main {
+        align-items: flex-start;
+        padding: 1.5rem .8rem;
+    }
+
+    .auth-brand-block {
+        margin-bottom: 1.1rem;
+    }
+
+    .auth-card .card-body {
+        padding: 1.3rem;
+    }
+
+    .auth-title {
+        font-size: 1.25rem;
+    }
+}
