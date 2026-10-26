@@ -30,6 +30,9 @@
                             @await Component.InvokeAsync("NotificationMenu")
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Battleship" asp-action="Index">Battleship</a>
+                        </li>
+                        <li class="nav-item">
                             <form asp-controller="Login" asp-action="Logout" method="post" asp-antiforgery="true">
                                 <button type="submit" class="nav-link btn btn-link text-dark">Cerrar sesión</button>
                             </form>

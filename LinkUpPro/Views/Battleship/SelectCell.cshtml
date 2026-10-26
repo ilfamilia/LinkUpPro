@@ -1,0 +1,41 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Battleship.BattleshipSelectCellViewModel
+@{
+    ViewData["Title"] = "Seleccionar casilla";
+    HashSet<(int, int)> occupied = Model.Placement.OccupiedCells
+        .Select(cell => (cell.Row, cell.Column)).ToHashSet();
+}
+<link rel="stylesheet" href="~/css/Battleship/Setup.css" asp-append-version="true" />
+
+<div class="container mt-4 mb-5">
+    <h1 class="h3">Seleccionar casilla inicial</h1>
+    <p>Barco @Model.ShipNumber (@Model.ShipSize casillas). Selecciona una casilla libre del tablero.</p>
+    @if (TempData["BattleshipPlacementError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+    <div class="battleship-board" aria-label="Seleccionar una casilla inicial libre">
+        @for (int row = 0; row < 12; row++)
+        {
+            @for (int column = 0; column < 12; column++)
+            {
+                if (occupied.Contains((row, column)))
+                {
+                    <span class="battleship-cell is-occupied"
+                          title="Fila @(row + 1), columna @(column + 1) ocupada"></span>
+                }
+                else
+                {
+                    <a class="battleship-cell is-selectable"
+                       asp-action="SelectDirection"
+                       asp-route-gameId="@Model.Placement.GameId"
+                       asp-route-shipNumber="@Model.ShipNumber"
+                       asp-route-row="@row"
+                       asp-route-column="@column"
+                       aria-label="Seleccionar fila @(row + 1), columna @(column + 1)"></a>
+                }
+            }
+        }
+    </div>
+    <a asp-action="Setup" asp-route-gameId="@Model.Placement.GameId"
+       class="btn btn-secondary mt-3">Volver a los barcos</a>
+</div>

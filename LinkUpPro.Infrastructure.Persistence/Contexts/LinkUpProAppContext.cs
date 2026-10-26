@@ -7,7 +7,10 @@ namespace LinkUpPro.Infrastructure.Persistence.Contexts
     public class LinkUpProAppContext : DbContext
     {
         public LinkUpProAppContext(DbContextOptions<LinkUpProAppContext> options) : base(options) { }
-    
+
+        public DbSet<BattleshipGame> BattleshipGames { get; set; }
+        public DbSet<BattleshipShip> BattleshipShips { get; set; }
+        public DbSet<BattleshipAttack> BattleshipAttacks { get; set; }
         public DbSet<Comment> Comments { get; set; }
         public DbSet<Friendship> Friendships { get; set; }
         public DbSet<FriendshipRequest> FriendshipRequests { get; set; }

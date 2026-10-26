@@ -1,0 +1,35 @@
+﻿.battleship-board {
+    width: min(100%, 570px);
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 2px;
+    background-color: #b8cad7;
+    border: 2px solid #819bb0;
+    padding: 2px;
+    border-radius: 6px;
+}
+
+.battleship-cell {
+    display: block;
+    aspect-ratio: 1;
+    min-width: 0;
+    border-radius: 2px;
+    background-color: #edf5fa;
+    border: 1px solid #c8d9e6;
+}
+
+.battleship-cell.is-occupied {
+    background-color: #276da3;
+    border-color: #1b4e75;
+}
+
+.battleship-cell.is-selectable:hover,
+.battleship-cell.is-selectable:focus-visible {
+    background-color: #a6d5ec;
+    outline: 2px solid #205781;
+    outline-offset: -2px;
+}
+
+.battleship-direction-card {
+    max-width: 550px;
+}

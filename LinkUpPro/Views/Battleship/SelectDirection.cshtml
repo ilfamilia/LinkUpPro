@@ -1,0 +1,49 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Battleship.BattleshipPlaceShipViewModel
+@using LinkUpPro.Core.Domain.Enums
+@{
+    ViewData["Title"] = "Dirección del barco";
+}
+<div class="container mt-4 mb-5">
+    <h1 class="h3 mb-3">Seleccionar dirección</h1>
+    <p>
+        Barco <strong>@Model.ShipNumber</strong>.
+        Casilla inicial: fila <strong>@(Model.Row + 1)</strong>,
+        columna <strong>@(Model.Column + 1)</strong>.
+    </p>
+    @if (TempData["BattleshipPlacementError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+
+    <div class="card battleship-direction-card">
+        <div class="card-body">
+            <form asp-action="PlaceShip" method="post" asp-antiforgery="true">
+                <input asp-for="GameId" type="hidden" />
+                <input asp-for="ShipNumber" type="hidden" />
+                <input asp-for="Row" type="hidden" />
+                <input asp-for="Column" type="hidden" />
+
+                <label asp-for="Direction" class="form-label">Dirección del barco</label>
+                <select asp-for="Direction" class="form-select mb-2">
+                    <option value="">Seleccione una dirección</option>
+                    <option value="@BattleshipShipDirection.Up">Arriba</option>
+                    <option value="@BattleshipShipDirection.Down">Abajo</option>
+                    <option value="@BattleshipShipDirection.Left">Izquierda</option>
+                    <option value="@BattleshipShipDirection.Right">Derecha</option>
+                </select>
+                <span asp-validation-for="Direction" class="text-danger"></span>
+
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary">Posicionar</button>
+                    <a asp-action="SelectCell"
+                       asp-route-gameId="@Model.GameId"
+                       asp-route-shipNumber="@Model.ShipNumber"
+                       class="btn btn-secondary">Cambiar casilla</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

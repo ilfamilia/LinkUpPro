@@ -1,0 +1,138 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Battleship.BattleshipIndexViewModel
+@using LinkUpPro.Core.Domain.Enums
+
+@{
+    ViewData["Title"] = "Battleship";
+    DateTime nowUtc = DateTime.UtcNow;
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <h1 class="h2 mb-0">Battleship</h1>
+        <a asp-controller="Battleship" asp-action="New" class="btn btn-primary">
+            Iniciar nueva partida
+        </a>
+    </div>
+
+    @if (TempData["BattleshipError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+    @if (TempData["BattleshipSuccess"] is string success)
+    {
+        <div class="alert alert-success" role="status">@success</div>
+    }
+
+    <section class="mb-4" aria-label="Estadísticas del historial">
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <div class="card"><div class="card-body">
+                    <strong>Partidas jugadas:</strong> @Model.TotalGames
+                </div></div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card"><div class="card-body">
+                    <strong>Ganadas:</strong> @Model.WonGames
+                </div></div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card"><div class="card-body">
+                    <strong>Perdidas:</strong> @Model.LostGames
+                </div></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="mb-5" aria-labelledby="active-games-title">
+        <h2 id="active-games-title" class="h4 mb-3">Partidas activas</h2>
+        @if (Model.ActiveGames.Count == 0)
+        {
+            <p class="text-muted">No tiene partidas activas.</p>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var game in Model.ActiveGames)
+                {
+                    string imagePath = string.IsNullOrWhiteSpace(game.OpponentProfileImage)
+                        ? Url.Content("~/Images/Defaults/default-profile.png")
+                        : Url.Content($"~/{game.OpponentProfileImage}");
+                    double hours = Math.Max(0, (nowUtc - game.CreatedAt).TotalHours);
+
+                    <div class="col-12 col-lg-6">
+                        <article class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <img src="@imagePath" alt="Foto de @game.OpponentUserName"
+                                         width="60" height="60" class="rounded-circle object-fit-cover" />
+                                    <div>
+                                        <h3 class="h6 mb-1">@game.OpponentUserName</h3>
+                                        <span class="badge bg-primary">
+                                            @(game.Status == BattleshipGameStatus.SettingUp
+                                                ? "Posicionando barcos" : "En curso")
+                                        </span>
+                                    </div>
+                                </div>
+                                <p class="mb-1">Creada: @game.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC</p>
+                                <p class="mb-1">Tiempo transcurrido: @hours.ToString("F1") horas</p>
+                                @if (game.Status == BattleshipGameStatus.InProgress)
+                                {
+                                    <p class="mb-3">@(game.IsMyTurn ? "Es tu turno." : "Turno del oponente.")</p>
+                                }
+                                <div class="d-flex flex-wrap gap-2">
+                                    <a asp-action="Details" asp-route-gameId="@game.Id"
+                                       class="btn btn-primary">Entrar a la partida</a>
+                                    <a asp-action="Surrender" asp-route-gameId="@game.Id"
+                                       class="btn btn-outline-danger">Rendirse</a>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <section aria-labelledby="history-title" class="mb-4">
+        <h2 id="history-title" class="h4 mb-3">Historial de partidas</h2>
+        @if (Model.FinishedGames.Count == 0)
+        {
+            <p class="text-muted">Todavía no tiene partidas finalizadas.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Oponente</th>
+                            <th scope="col">Inicio</th>
+                            <th scope="col">Finalización</th>
+                            <th scope="col">Duración</th>
+                            <th scope="col">Resultado</th>
+                            <th scope="col">Ganador</th>
+                            <th scope="col">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var game in Model.FinishedGames)
+                        {
+                            <tr>
+                                <td>@game.OpponentUserName</td>
+                                <td>@game.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC</td>
+                                <td>@(game.FinishedAt.HasValue ? game.FinishedAt.Value.ToString("dd/MM/yyyy HH:mm") + " UTC" : "-")</td>
+                                <td>@(game.FinishedAt.HasValue ? Math.Max(0, (game.FinishedAt.Value - game.CreatedAt).TotalHours).ToString("F1") + " h" : "-")</td>
+                                <td>@(game.DidIWin == true ? "Victoria" : "Derrota")</td>
+                                <td>@(game.DidIWin == true ? "Yo" : game.OpponentUserName)</td>
+                                <td>
+                                    <a asp-action="Result" asp-route-gameId="@game.Id"
+                                       class="btn btn-outline-primary btn-sm">Ver resultado</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

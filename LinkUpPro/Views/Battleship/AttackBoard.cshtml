@@ -1,0 +1,111 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Battleship.BattleshipAttackBoardViewModel
+@using LinkUpPro.Core.Domain.Enums
+
+@{
+    ViewData["Title"] = "Tablero de ataque";
+    var attackCells = Model.Attacks.ToDictionary(a => (a.Row, a.Column));
+}
+
+<link rel="stylesheet" href="~/css/Battleship/Attack.css" asp-append-version="true" />
+
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center mb-3">
+        <h1 class="h3 mb-0">Tablero de ataque — Partida #@Model.GameId</h1>
+        <div class="d-flex gap-2 flex-wrap">
+            <a asp-action="AttackBoard" asp-route-gameId="@Model.GameId"
+               class="btn btn-outline-primary">Refrescar pantalla</a>
+            <a asp-action="MyBoard" asp-route-gameId="@Model.GameId"
+               class="btn btn-outline-info">Ver mi tablero</a>
+            @if (Model.Status == BattleshipGameStatus.InProgress)
+            {
+                <a asp-action="Surrender" asp-route-gameId="@Model.GameId"
+                   class="btn btn-outline-danger">Rendirse</a>
+            }
+            else if (Model.Status == BattleshipGameStatus.Finished)
+            {
+                <a asp-action="Result" asp-route-gameId="@Model.GameId"
+                   class="btn btn-outline-primary">Ver resultado</a>
+            }
+            <a asp-action="Index" class="btn btn-outline-secondary">Volver atrás</a>
+        </div>
+    </div>
+
+    @if (TempData["BattleshipAttackError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+    @if (TempData["BattleshipAttackSuccess"] is string success)
+    {
+        <div class="alert alert-success" role="status">@success</div>
+    }
+
+    @if (Model.Status == BattleshipGameStatus.Finished)
+    {
+        <div class="alert alert-info">
+            Partida finalizada. Resultado: @(Model.DidIWin == true ? "Victoria" : "Derrota").
+            Este tablero es de consulta.
+        </div>
+    }
+    else if (Model.IsMyTurn)
+    {
+        <div class="alert alert-primary">Es tu turno. Selecciona una casilla que no hayas atacado.</div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            Es turno del otro jugador. Utiliza «Refrescar pantalla» para comprobar si ya puedes atacar.
+        </div>
+    }
+
+    <p class="small text-muted">Rojo: impacto. Verde: fallo. Gris: casilla sin atacar.</p>
+
+    <div class="battleship-scroll">
+        <table class="table table-bordered battleship-grid" aria-label="Tablero de ataque de doce por doce">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    @for (int col = 0; col < 12; col++)
+                    {
+                        <th scope="col">@((char)('A' + col))</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @for (int row = 0; row < 12; row++)
+                {
+                    <tr>
+                        <th scope="row">@(row + 1)</th>
+                        @for (int col = 0; col < 12; col++)
+                        {
+                            <td>
+                                @if (attackCells.TryGetValue((row, col), out var cell))
+                                {
+                                    <span class="battleship-cell @(cell.IsHit ? "battleship-hit" : "battleship-miss")"
+                                          title="@(cell.IsHit ? "Impacto" : "Fallo")"
+                                          aria-label="@(cell.IsHit ? "Impacto" : "Fallo")">
+                                        @(cell.IsHit ? "✕" : "•")
+                                    </span>
+                                }
+                                else if (Model.Status == BattleshipGameStatus.InProgress && Model.IsMyTurn)
+                                {
+                                    <form asp-action="Attack" asp-controller="Battleship" method="post"
+                                          asp-antiforgery="true" class="m-0">
+                                        <input type="hidden" name="GameId" value="@Model.GameId" />
+                                        <input type="hidden" name="Row" value="@row" />
+                                        <input type="hidden" name="Column" value="@col" />
+                                        <button type="submit" class="battleship-cell battleship-available"
+                                                aria-label="Atacar fila @(row + 1), columna @((char)('A' + col))">·</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="battleship-cell battleship-unavailable" aria-label="Sin atacar">·</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
