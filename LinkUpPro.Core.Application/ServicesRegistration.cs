@@ -19,6 +19,7 @@ namespace LinkUpPro.Core.Application
             services.AddScoped<IReactionService, ReactionService>();
             services.AddScoped<IFriendshipRequestService, FriendshipRequestService>();
             services.AddScoped<IFriendshipService, FriendshipService>();
+            services.AddScoped<INotificationService, NotificationService>();
             #endregion
         }
     }

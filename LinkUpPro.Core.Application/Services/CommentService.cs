@@ -16,14 +16,19 @@ namespace LinkUpPro.Core.Application.Services
         private readonly IPostService _postService;
         private readonly IUserAccountStatusService _userAccountStatusService;
         private readonly IMapper _mapper;
+        private readonly INotificationService _notificationService;
+        private readonly ITransactionManager _transactionManager;
 
         public CommentService(ICommentRepository commentRepository, IPostService postService,
-            IUserAccountStatusService userAccountStatusService, IMapper mapper)
+            IUserAccountStatusService userAccountStatusService, IMapper mapper,
+            INotificationService notificationService, ITransactionManager transactionManager)
         {
             _commentRepository = commentRepository;
             _postService = postService;
             _userAccountStatusService = userAccountStatusService;
             _mapper = mapper;
+            _notificationService = notificationService;
+            _transactionManager = transactionManager;
         }
 
         public async Task<ServiceResult> AddAsync(CreateCommentDto dto)
@@ -50,8 +55,7 @@ namespace LinkUpPro.Core.Application.Services
                 }
 
                 if (dto.PostId <= 0 ||
-                    (dto.ParentCommentId.HasValue &&
-                     dto.ParentCommentId.Value <= 0))
+                    (dto.ParentCommentId.HasValue && dto.ParentCommentId.Value <= 0))
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
                         "Los identificadores proporcionados son inválidos");
@@ -86,9 +90,11 @@ namespace LinkUpPro.Core.Application.Services
 
                 if (dto.ParentCommentId.HasValue)
                 {
-                    Comment? parentComment = await _commentRepository.GetByIdAsync(dto.ParentCommentId.Value);
+                    Comment? parentComment = await _commentRepository.GetByIdAsync(
+                        dto.ParentCommentId.Value);
 
-                    if (parentComment == null || parentComment.IsDeleted || parentComment.PostId != dto.PostId)
+                    if (parentComment == null || parentComment.IsDeleted ||
+                        parentComment.PostId != dto.PostId)
                     {
                         return ServiceResult.Failure(OperationStatus.NotFound,
                             "El comentario al que intenta responder no está disponible");
@@ -96,15 +102,53 @@ namespace LinkUpPro.Core.Application.Services
                 }
 
                 Comment comment = _mapper.Map<Comment>(dto);
-
                 comment.Content = dto.Content.Trim();
                 comment.CreatedAt = DateTime.UtcNow;
                 comment.UpdatedAt = null;
                 comment.IsDeleted = false;
 
-                await _commentRepository.AddAsync(comment);
+                // Los repositorios llaman SaveChangesAsync: comenzar antes de guardar
+                bool transactionOpen = false;
+                try
+                {
+                    await _transactionManager.BeginTransactionAsync();
+                    transactionOpen = true;
 
-                return ServiceResult.Success();
+                    // AddAsync asigna el Id generado que usará la notificación
+                    await _commentRepository.AddAsync(comment);
+
+                    ServiceResult notificationResult =
+                        await _notificationService.CreateForCommentAsync(comment.Id);
+
+                    if (!notificationResult.IsSuccess)
+                    {
+                        await _transactionManager.RollbackAsync();
+                        transactionOpen = false;
+                        return ServiceResult.Failure(notificationResult.Status,
+                            notificationResult.Errors.ToArray());
+                    }
+
+                    await _transactionManager.CommitAsync();
+                    transactionOpen = false;
+                    return ServiceResult.Success();
+                }
+                catch
+                {
+                    if (transactionOpen)
+                    {
+                        try
+                        {
+                            await _transactionManager.RollbackAsync();
+                        }
+                        catch
+                        {
+                            // No ocultar el fallo original si también falla la reversión
+                        }
+                    }
+
+                    return ServiceResult.Failure(OperationStatus.Failed,
+                        "No se pudo registrar el comentario y su notificación.");
+                }
             });
         }
 

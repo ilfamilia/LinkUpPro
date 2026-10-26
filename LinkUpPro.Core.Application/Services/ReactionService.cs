@@ -11,11 +11,16 @@ namespace LinkUpPro.Core.Application.Services
     {
         private readonly IReactionRepository _reactionRepository;
         private readonly IPostService _postService;
+        private readonly INotificationService _notificationService;
+        private readonly ITransactionManager _transactionManager;
 
-        public ReactionService(IReactionRepository reactionRepository, IPostService postService)
+        public ReactionService(IReactionRepository reactionRepository, IPostService postService,
+            INotificationService notificationService, ITransactionManager transactionManager)
         {
             _reactionRepository = reactionRepository;
             _postService = postService;
+            _notificationService = notificationService;
+            _transactionManager = transactionManager;
         }
 
         public async Task<ServiceResult> ToggleReactionAsync(int postId, string userId, ReactionType reactionType)
@@ -55,34 +60,82 @@ namespace LinkUpPro.Core.Application.Services
 
                 Reaction? reaction = await _reactionRepository.GetByIdAsync(userId, postId);
 
-                if (reaction == null)
-                {
-                    Reaction newReaction = new()
-                    {
-                        UserId = userId,
-                        PostId = postId,
-                        Type = reactionType
-                    };
-
-                    await _reactionRepository.AddAsync(newReaction);
-
-                    return ServiceResult.Success();
-                }
-
-                if (reaction.Type == reactionType)
+                // Eliminar una reacción no debe generar notificación
+                if (reaction != null && reaction.Type == reactionType)
                 {
                     bool deleted = await _reactionRepository.DeleteAsync(userId, postId);
-
-                    return deleted ? ServiceResult.Success() : ServiceResult.Failure(OperationStatus.Conflict,
+                    return deleted ? ServiceResult.Success()
+                        : ServiceResult.Failure(OperationStatus.Conflict,
                             "No se pudo eliminar la reacción");
                 }
 
-                reaction.Type = reactionType;
+                bool isChange = reaction != null;
+                bool transactionOpen = false;
 
-                Reaction? updatedReaction = await _reactionRepository.UpdateAsync(reaction, userId, postId);
+                try
+                {
+                    await _transactionManager.BeginTransactionAsync();
+                    transactionOpen = true;
 
-                return updatedReaction != null ? ServiceResult.Success() : ServiceResult.Failure(OperationStatus.Conflict,
-                        "No se pudo actualizar la reacción");
+                    if (reaction == null)
+                    {
+                        Reaction newReaction = new()
+                        {
+                            UserId = userId,
+                            PostId = postId,
+                            Type = reactionType
+                        };
+
+                        await _reactionRepository.AddAsync(newReaction);
+                    }
+                    else
+                    {
+                        reaction.Type = reactionType;
+                        Reaction? updated = await _reactionRepository.UpdateAsync(
+                            reaction, userId, postId);
+
+                        if (updated == null)
+                        {
+                            await _transactionManager.RollbackAsync();
+                            transactionOpen = false;
+                            return ServiceResult.Failure(OperationStatus.Conflict,
+                                "No se pudo actualizar la reacción");
+                        }
+                    }
+
+                    ServiceResult notificationResult =
+                        await _notificationService.CreateForReactionAsync(
+                            postId, userId, reactionType, isChange);
+
+                    if (!notificationResult.IsSuccess)
+                    {
+                        await _transactionManager.RollbackAsync();
+                        transactionOpen = false;
+                        return ServiceResult.Failure(notificationResult.Status,
+                            notificationResult.Errors.ToArray());
+                    }
+
+                    await _transactionManager.CommitAsync();
+                    transactionOpen = false;
+                    return ServiceResult.Success();
+                }
+                catch
+                {
+                    if (transactionOpen)
+                    {
+                        try
+                        {
+                            await _transactionManager.RollbackAsync();
+                        }
+                        catch
+                        {
+                            // No ocultar el fallo original si también falla la reversión
+                        }
+                    }
+
+                    return ServiceResult.Failure(OperationStatus.Failed,
+                        "No se pudo registrar la reacción y su notificación.");
+                }
             });
         }
     }
