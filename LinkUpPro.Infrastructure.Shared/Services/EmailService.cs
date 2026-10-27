@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using Microsoft.Extensions.Logging;
 
-namespace LinkUpPro.Infrastructure.Share.Services
+namespace LinkUpPro.Infrastructure.Shared.Services
 {
     public class EmailService : IEmailService
     {

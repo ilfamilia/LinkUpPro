@@ -419,5 +419,6 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
-# Official VS Code C# Dev Kit Extension exclusion
-#*.lscache
+# Ignore user-uploaded images
+/LinkUpPro/wwwroot/Images/Posts/
+/LinkUpPro/wwwroot/Images/Users/

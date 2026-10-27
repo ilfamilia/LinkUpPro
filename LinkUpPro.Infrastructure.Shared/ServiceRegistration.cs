@@ -1,10 +1,11 @@
 using LinkUpPro.Core.Application.Interfaces;
-using LinkUpPro.Infrastructure.Share.Services;
+using LinkUpPro.Infrastructure.Shared.Services;
 using LinkUpPro.Core.Domain.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 
-namespace LinkUpPro.Infrastructure.Share{
+namespace LinkUpPro.Infrastructure.Shared
+{
     public static class ServiceRegistration
     {
         public static void AddSharedLayerIoc(this IServiceCollection services, IConfiguration configuration)

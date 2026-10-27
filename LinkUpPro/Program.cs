@@ -1,7 +1,7 @@
 using LinkUpPro.Core.Application;
 using LinkUpPro.Infrastructure.Identity;
 using LinkUpPro.Infrastructure.Persistence;
-using LinkUpPro.Infrastructure.Share;
+using LinkUpPro.Infrastructure.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 
