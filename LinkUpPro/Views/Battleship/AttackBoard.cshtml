@@ -22,6 +22,7 @@
             @if (Model.Status == BattleshipGameStatus.InProgress)
             {
                 <a asp-action="Surrender" asp-route-gameId="@Model.GameId"
+                   asp-route-returnTo="AttackBoard"
                    class="btn btn-outline-danger">Rendirse</a>
             }
             else if (Model.Status == BattleshipGameStatus.Finished)
@@ -44,8 +45,8 @@
 
     @if (Model.Status == BattleshipGameStatus.Finished)
     {
-        <div class="alert alert-info">
-            Partida finalizada. Resultado: @(Model.DidIWin == true ? "Victoria" : "Derrota").
+        <div class="alert @(Model.DidIWin == true ? "alert-success" : "alert-info")" role="status">
+            @(Model.DidIWin == true ? "¡Felicidades! Has ganado la partida." : "Partida finalizada. Resultado: Derrota.")
             Este tablero es de consulta.
         </div>
     }
@@ -102,7 +103,9 @@
                                         <input type="hidden" name="Row" value="@row" />
                                         <input type="hidden" name="Column" value="@col" />
                                         <button type="submit" class="battleship-cell battleship-available"
-                                                aria-label="Atacar fila @(row + 1), columna @((char)('A' + col))">·</button>
+                                                aria-label="Atacar fila @(row + 1), columna @((char)('A' + col))">
+                                            ·
+                                        </button>
                                     </form>
                                 }
                                 else

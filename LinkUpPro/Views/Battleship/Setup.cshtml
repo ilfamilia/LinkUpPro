@@ -16,6 +16,7 @@
         <h1 class="h3 mb-0">Partida #@Model.GameId — Posicionar barcos</h1>
         <div class="d-flex flex-wrap gap-2">
             <a asp-action="Surrender" asp-route-gameId="@Model.GameId"
+               asp-route-returnTo="Setup"
                class="btn btn-outline-danger">Rendirse</a>
             <a asp-action="Index" class="btn btn-outline-secondary">Volver a Battleship</a>
         </div>
@@ -69,15 +70,15 @@
     <p class="small text-muted d-sm-none mb-2">Si no ves todas las casillas, desliza el tablero horizontalmente.</p>
     <div class="battleship-board-scroll" tabindex="0" aria-label="Tablero de posicionamiento; desplázate horizontalmente si es necesario">
         <div class="battleship-board" role="img" aria-label="Tablero de 12 por 12, con las casillas propias ocupadas resaltadas">
-        @for (int row = 0; row < 12; row++)
-        {
-            @for (int column = 0; column < 12; column++)
+            @for (int row = 0; row < 12; row++)
             {
-                bool used = occupied.Contains((row, column));
-                <div class="battleship-cell @(used ? "is-occupied" : "")"
-                     title="Fila @(row + 1), columna @(column + 1): @(used ? "barco" : "vacía")"></div>
+                @for (int column = 0; column < 12; column++)
+                {
+                    bool used = occupied.Contains((row, column));
+                    <div class="battleship-cell @(used ? "is-occupied" : "")"
+                         title="Fila @(row + 1), columna @(column + 1): @(used ? "barco" : "vacía")"></div>
+                }
             }
-        }
         </div>
     </div>
     @if (Model.MyShipsReady)

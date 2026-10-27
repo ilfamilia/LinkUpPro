@@ -309,8 +309,7 @@ namespace LinkUpPro.Controllers
 
             if (!ModelState.IsValid)
             {
-                TempData["BattleshipAttackError"] =
-                    "Seleccione una casilla válida del tablero.";
+                TempData["BattleshipAttackError"] = "Seleccione una casilla válida del tablero.";
                 return RedirectToAction(nameof(AttackBoard), new { gameId = vm.GameId });
             }
 
@@ -321,6 +320,19 @@ namespace LinkUpPro.Controllers
             if (result.Status == OperationStatus.Forbidden) return Forbid();
             if (result.Status == OperationStatus.NotFound) return NotFound();
 
+            if (result.IsSuccess)
+            {
+                ServiceResultWithData<BattleshipAttackBoardDto> board =
+                    await _attackService.GetAttackBoardAsync(vm.GameId, user.Id);
+
+                if (board.IsSuccess && board.Data?.Status == BattleshipGameStatus.Finished &&
+                    board.Data.DidIWin == true)
+                {
+                    TempData["BattleshipSuccess"] = "¡Felicidades! Has ganado la partida.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
             TempData[result.IsSuccess ? "BattleshipAttackSuccess" : "BattleshipAttackError"] =
                 result.IsSuccess ? "Ataque registrado."
                     : result.Errors.Count > 0 ? string.Join(" ", result.Errors)
@@ -330,7 +342,7 @@ namespace LinkUpPro.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Surrender(int gameId)
+        public async Task<IActionResult> Surrender(int gameId, string? returnTo)
         {
             AppUser? user = await _userManager.GetUserAsync(User);
             if (user == null) return Challenge();
@@ -343,10 +355,19 @@ namespace LinkUpPro.Controllers
             if (result.Data.Status == BattleshipGameStatus.Finished)
                 return RedirectToAction(nameof(Result), new { gameId });
 
+            string cancelAction = returnTo switch
+            {
+                "Index" => nameof(Index),
+                "Setup" when result.Data.Status == BattleshipGameStatus.SettingUp => nameof(Setup),
+                _ => result.Data.Status == BattleshipGameStatus.SettingUp
+                    ? nameof(Setup) : nameof(AttackBoard)
+            };
+
             return View(new BattleshipSurrenderViewModel
             {
                 GameId = gameId,
-                OpponentUserName = result.Data.OpponentUserName
+                OpponentUserName = result.Data.OpponentUserName,
+                CancelAction = cancelAction
             });
         }
 

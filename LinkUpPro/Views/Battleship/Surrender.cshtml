@@ -22,8 +22,15 @@
                     <form asp-controller="Battleship" asp-action="ConfirmSurrender"
                           method="post" asp-antiforgery="true" class="d-flex flex-wrap gap-2">
                         <input type="hidden" name="gameId" value="@Model.GameId" />
-                        <a asp-action="Details" asp-route-gameId="@Model.GameId"
-                           class="btn btn-secondary">Cancelar</a>
+                        @if (Model.CancelAction == "Index")
+                        {
+                            <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+                        }
+                        else
+                        {
+                            <a asp-action="@Model.CancelAction" asp-route-gameId="@Model.GameId"
+                               class="btn btn-secondary">Cancelar</a>
+                        }
                         <button type="submit" class="btn btn-danger">Aceptar rendición</button>
                     </form>
                 </div>

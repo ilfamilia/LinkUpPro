@@ -33,22 +33,28 @@
     <section class="mb-4" aria-label="Estadísticas del historial">
         <div class="row g-3">
             <div class="col-12 col-md-4">
-                <div class="card battleship-stat battleship-stat--total"><div class="card-body">
-                    <p class="battleship-stat__label">Partidas jugadas</p>
-                    <p class="battleship-stat__value">@Model.TotalGames</p>
-                </div></div>
+                <div class="card battleship-stat battleship-stat--total">
+                    <div class="card-body">
+                        <p class="battleship-stat__label">Partidas jugadas</p>
+                        <p class="battleship-stat__value">@Model.TotalGames</p>
+                    </div>
+                </div>
             </div>
             <div class="col-12 col-md-4">
-                <div class="card battleship-stat battleship-stat--won"><div class="card-body">
-                    <p class="battleship-stat__label">Ganadas</p>
-                    <p class="battleship-stat__value">@Model.WonGames</p>
-                </div></div>
+                <div class="card battleship-stat battleship-stat--won">
+                    <div class="card-body">
+                        <p class="battleship-stat__label">Ganadas</p>
+                        <p class="battleship-stat__value">@Model.WonGames</p>
+                    </div>
+                </div>
             </div>
             <div class="col-12 col-md-4">
-                <div class="card battleship-stat battleship-stat--lost"><div class="card-body">
-                    <p class="battleship-stat__label">Perdidas</p>
-                    <p class="battleship-stat__value">@Model.LostGames</p>
-                </div></div>
+                <div class="card battleship-stat battleship-stat--lost">
+                    <div class="card-body">
+                        <p class="battleship-stat__label">Perdidas</p>
+                        <p class="battleship-stat__value">@Model.LostGames</p>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -93,6 +99,7 @@
                                     <a asp-action="Details" asp-route-gameId="@game.Id"
                                        class="btn btn-primary">Entrar a la partida</a>
                                     <a asp-action="Surrender" asp-route-gameId="@game.Id"
+                                       asp-route-returnTo="Index"
                                        class="btn btn-outline-danger">Rendirse</a>
                                 </div>
                             </div>
