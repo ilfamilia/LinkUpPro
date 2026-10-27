@@ -18,7 +18,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
         private readonly IEmailService _emailService;
         private readonly ILogger<AccountServiceForWebApp> _logger;
 
-        public AccountServiceForWebApp(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, 
+        public AccountServiceForWebApp(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager,
             IEmailService emailService, ILogger<AccountServiceForWebApp> logger)
         {
             _userManager = userManager;
@@ -110,10 +110,11 @@ namespace LinkUpPro.Infrastructure.Identity.Services
         {
             await _signInManager.SignOutAsync();
         }
-        
+
         public async Task<RegisterResponseDto> RegisterUserAsync(RegisterUserDto saveDto, string origin)
         {
-            RegisterResponseDto RegisterRes = new(){
+            RegisterResponseDto RegisterRes = new()
+            {
                 Email = "",
                 Id = "",
                 LastName = "",
@@ -127,7 +128,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             if (userWithSameEmailName != null)
             {
                 RegisterRes.HasError = true;
-                RegisterRes.Errors.Add($"This email is already registered: {saveDto.Email}");
+                RegisterRes.Errors.Add("Este correo electrónico ya se encuentra registrado.");
                 return RegisterRes;
             }
 
@@ -135,7 +136,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             if (userWithSameUserName != null)
             {
                 RegisterRes.HasError = true;
-                RegisterRes.Errors.Add($"This username is already registered: {saveDto.UserName}");
+                RegisterRes.Errors.Add("Este nombre de usuario ya se encuentra registrado.");
                 return RegisterRes;
             }
 
@@ -320,14 +321,14 @@ namespace LinkUpPro.Infrastructure.Identity.Services
             List<UserDto> ListUsersDto = [];
 
             var users = _userManager.Users;
-            
-            if(isActive != null && isActive == true)
+
+            if (isActive != null && isActive == true)
             {
                 users = users.Where(u => u.EmailConfirmed);
             }
 
             var listUsers = await users.ToListAsync();
-            
+
             foreach (var item in listUsers)
             {
                 ListUsersDto.Add(new UserDto()
@@ -348,7 +349,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
         public async Task<UserDto?> GetUserByUserNameAsync(string userName)
         {
             var user = await _userManager.FindByNameAsync(userName);
-            if(user == null)
+            if (user == null)
             {
                 return null;
             }
@@ -369,7 +370,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
         public async Task<UserDto?> GetUserByIdAsync(string Id)
         {
             var user = await _userManager.FindByIdAsync(Id);
-            if(user == null)
+            if (user == null)
             {
                 return null;
             }
@@ -616,7 +617,7 @@ namespace LinkUpPro.Infrastructure.Identity.Services
                     response.Errors.Add("No se pudo restablecer la contraseña. " +
                         "Verifique que cumpla los requisitos de seguridad");
                 }
-               
+
                 return response;
             }
 
