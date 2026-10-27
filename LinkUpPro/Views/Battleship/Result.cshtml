@@ -1,0 +1,97 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Battleship.BattleshipResultViewModel
+@using LinkUpPro.Core.Domain.Enums
+
+@{
+    ViewData["Title"] = Model.ShowOpponentBoard ? "Ataques del oponente" : "Resultado de partida";
+    var cells = (Model.ShowOpponentBoard ? Model.OpponentAttacks : Model.MyAttacks)
+        .ToDictionary(a => (a.Row, a.Column));
+    string endReason = Model.EndReason switch
+    {
+        BattleshipGameEndReason.AllShipsSunk => "Todos los barcos hundidos",
+        BattleshipGameEndReason.Surrender => "Rendición",
+        BattleshipGameEndReason.Abandonment => "Abandono de 48 horas",
+        _ => "Finalizada"
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Battleship/Attack.css" asp-append-version="true" />
+}
+
+<div class="container battleship-page battleship-page--wide mt-4 mb-5">
+    <h1 class="h3">Resultado — Partida #@Model.GameId</h1>
+    <div class="card battleship-result-card mb-4">
+        <div class="card-body">
+            <p class="mb-1">Oponente: <strong>@Model.OpponentUserName</strong></p>
+            <p class="mb-1">Resultado: <strong>@(Model.DidIWin ? "Victoria" : "Derrota")</strong></p>
+            <p class="mb-1">Motivo: @endReason</p>
+            <p class="mb-1">Creada: @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC</p>
+            <p class="mb-1">Finalizada: @Model.FinishedAt.ToString("dd/MM/yyyy HH:mm") UTC</p>
+            <p class="mb-0">Duración: @Model.DurationHours.ToString("F1") horas</p>
+        </div>
+    </div>
+
+    <h2 class="h5 battleship-section-title">@(Model.ShowOpponentBoard ? "Tablero de ataque del oponente" : "Mi tablero de ataque final")</h2>
+    <p class="text-muted small">Este tablero es de consulta y no permite nuevos ataques.</p>
+    <div class="battleship-legend" aria-label="Leyenda del tablero">
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--hit"></span> Impacto</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--miss"></span> Fallo</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--empty"></span> Sin atacar</span>
+    </div>
+
+    <p class="small text-muted d-sm-none mb-2">Si no ves todas las casillas, desliza el tablero horizontalmente.</p>
+    <div class="battleship-scroll battleship-grid-wrap mb-4" tabindex="0" aria-label="Tablero histórico; desplázate horizontalmente si es necesario">
+        <table class="table table-bordered battleship-grid" aria-label="Tablero histórico de ataque de doce por doce">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    @for (int col = 0; col < 12; col++)
+                    {
+                        <th scope="col">@((char)('A' + col))</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @for (int row = 0; row < 12; row++)
+                {
+                    <tr>
+                        <th scope="row">@(row + 1)</th>
+                        @for (int col = 0; col < 12; col++)
+                        {
+                            <td>
+                                @if (cells.TryGetValue((row, col), out var attack))
+                                {
+                                    <span class="battleship-cell @(attack.IsHit ? "battleship-hit" : "battleship-miss")"
+                                          title="@(attack.IsHit ? "Impacto" : "Fallo")">
+                                        @(attack.IsHit ? "✕" : "•")
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="battleship-cell battleship-unavailable" aria-label="Sin atacar">·</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        @if (Model.ShowOpponentBoard)
+        {
+            <a asp-action="Result" asp-route-gameId="@Model.GameId"
+               class="btn btn-outline-primary">Ver mi tablero de ataque</a>
+        }
+        else
+        {
+            <a asp-action="OpponentResult" asp-route-gameId="@Model.GameId"
+               class="btn btn-outline-primary">Ver tablero del otro jugador</a>
+        }
+        <a asp-action="MyBoard" asp-route-gameId="@Model.GameId"
+           class="btn btn-outline-info">Ver mi tablero de posicionamiento</a>
+        <a asp-action="Index" class="btn btn-secondary">Volver atrás</a>
+    </div>
+</div>

@@ -1,4 +1,4 @@
-﻿using LinkUpPro.Core.Application.Dtos.Email;
+using LinkUpPro.Core.Application.Dtos.Email;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Domain.Settings;
 using Microsoft.Extensions.Options;
@@ -23,10 +23,10 @@ namespace LinkUpPro.Infrastructure.Share.Services
                 emailRequestDto.ToRange?.Add(emailRequestDto.To ?? "");
                 MimeMessage email = new()
                 {
-                    Sender = MailboxAddress.Parse(_emailSttings.EmailFrom),
-                    From = { new MailboxAddress(_emailSttings.DisplayName, _emailSttings.EmailFrom) },
-                    Subject = emailRequestDto.Subject,
+                    Subject = emailRequestDto.Subject
                 };
+
+                email.From.Add(new MailboxAddress(_emailSttings.DisplayName, _emailSttings.EmailFrom));
 
                 foreach (var to in emailRequestDto.ToRange ?? [])
                 {
@@ -40,15 +40,6 @@ namespace LinkUpPro.Infrastructure.Share.Services
 
                 email.Body = builder.ToMessageBody();
 
-                if (!string.IsNullOrWhiteSpace(_emailSttings.PickupDirectory))
-                {
-                    // Local development: store the message so its links can be opened without an SMTP server.
-                    Directory.CreateDirectory(_emailSttings.PickupDirectory);
-                    string path = Path.Combine(_emailSttings.PickupDirectory, $"{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}.eml");
-                    await email.WriteToAsync(path);
-                    return;
-                }
-
                 using MailKit.Net.Smtp.SmtpClient smtp = new();
                 await smtp.ConnectAsync(_emailSttings.SmtpHost, _emailSttings.SmtpPort, MailKit.Security.SecureSocketOptions.StartTls);
                 await smtp.AuthenticateAsync(_emailSttings.SmtpUser, _emailSttings.SmtpPass);
@@ -57,7 +48,8 @@ namespace LinkUpPro.Infrastructure.Share.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending email.");
+                _logger.LogError(ex, "Ocurrió un error al enviar el correo electrónico.");
+
                 throw;
             }
         }

@@ -1,60 +1,78 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+﻿@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+}
+<!DOCTYPE html>
+<html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - LinkUpPro</title>
-    <script type="importmap"></script>
+    <title>@ViewData["Title"] - LinkUp Pro</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/LinkUpPro.styles.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
-<body>
+<body class="app-layout">
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">LinkUpPro</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+        <nav class="navbar navbar-expand-xl app-navbar" aria-label="Navegación principal">
+            <div class="container-fluid app-navbar-container">
+                <a class="navbar-brand app-brand" asp-controller="Home" asp-action="Index">LinkUp Pro</a>
+
+                <button class="navbar-toggler" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#appNavbar"
+                        aria-controls="appNavbar" aria-expanded="false"
+                        aria-label="Abrir o cerrar menú de navegación">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    @if (User.Identity?.IsAuthenticated == true)
-                    {
-                        <ul class="navbar-nav flex-grow-1">
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                            </li>
-                            @* Render social links and request-time counters without client-side polling. *@
-                            @await Component.InvokeAsync("SocialNavigation")
-                        </ul>
-                        <form asp-controller="Login" asp-action="Logout" method="post" class="d-flex">
-                            <button type="submit" class="btn btn-outline-danger btn-sm">Cerrar sesión</button>
-                        </form>
-                    }
+
+                <div id="appNavbar" class="collapse navbar-collapse">
+                    <ul class="navbar-nav ms-auto align-items-xl-center gap-xl-1">
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Home" ? "active" : "")"
+                               asp-controller="Home" asp-action="Index"
+                               aria-current="@(currentController == "Home" ? "page" : null)">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Friendship" ? "active" : "")"
+                               asp-controller="Friendship" asp-action="Index"
+                               aria-current="@(currentController == "Friendship" ? "page" : null)">Amigos</a>
+                        </li>
+
+                        @await Component.InvokeAsync("FriendshipRequestMenu")
+                        @await Component.InvokeAsync("NotificationMenu")
+
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Battleship" ? "active" : "")"
+                               asp-controller="Battleship" asp-action="Index"
+                               aria-current="@(currentController == "Battleship" ? "page" : null)">Battleship</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Profile" ? "active" : "")"
+                               asp-controller="Profile" asp-action="Index"
+                               aria-current="@(currentController == "Profile" ? "page" : null)">Mi perfil</a>
+                        </li>
+                        <li class="nav-item app-logout-item">
+                            <form asp-controller="Login" asp-action="Logout" method="post" asp-antiforgery="true">
+                                <button type="submit" class="nav-link app-logout-button">Cerrar sesión</button>
+                            </form>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @if (TempData["Success"] is string success)
-            {
-                <div class="alert alert-success alert-dismissible fade show mt-3" role="status">
-                    @success
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                </div>
-            }
+
+    <div class="container app-content flex-grow-1">
+        <main role="main" class="app-main">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
+    <footer class="app-footer">
         <div class="container">
-            &copy; @DateTime.Now.Year - LinkUpPro
+            &copy; @DateTime.Now.Year - LinkUp Pro
         </div>
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

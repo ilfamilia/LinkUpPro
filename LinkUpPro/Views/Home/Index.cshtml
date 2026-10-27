@@ -1,34 +1,46 @@
 ﻿@using LinkUpPro.Core.Application.ViewModels.Comment
 @using LinkUpPro.Core.Domain.Enums
-
 @model LinkUpPro.Core.Application.ViewModels.Home.HomeViewModel
 
 @{
-    ViewData["Title"] = "Home";
+    ViewData["Title"] = "Mis publicaciones";
+
+    bool hasActiveFilters = !string.IsNullOrWhiteSpace(Model.Filter.SearchText)
+        || Model.Filter.MediaType.HasValue
+        || Model.Filter.IsEdited.HasValue
+        || Model.Filter.StartDate.HasValue
+        || Model.Filter.EndDate.HasValue;
 }
 
-@section Styles
-{
+@section Styles {
+    <link rel="stylesheet" href="~/css/Post/Posts.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/Home/Index.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/Comment/Comments.css" asp-append-version="true" />
 }
 
-<div class="container mt-4">
-    <h2 class="mb-4">Mis publicaciones</h2>
+<div class="home-page">
+    @if (TempData["ProfileUpdated"] is string message)
+    {
+        <div class="alert alert-success" role="status">@message</div>
+    }
+
+    <header class="home-page__heading mb-4">
+        <h1 class="mb-1">Mis publicaciones</h1>
+        <p class="text-muted mb-0">Comparte momentos y administra tus publicaciones.</p>
+    </header>
 
     <partial name="~/Views/Home/_CreatePostForm.cshtml" model="Model.CreatePost" />
 
-    <div class="card mb-4">
+    <section class="card home-card home-filters mb-4" aria-labelledby="post-filter-title">
         <div class="card-body">
-            <h5 class="card-title mb-3">Buscar publicaciones</h5>
+            <h2 class="h4 mb-3" id="post-filter-title">Buscar publicaciones</h2>
             <form asp-controller="Home" asp-action="Index" method="get">
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
                 <div class="row g-3">
                     <div class="col-12 col-md-6">
                         <label asp-for="Filter.SearchText" class="form-label">Contenido</label>
                         <input asp-for="Filter.SearchText" class="form-control" placeholder="Buscar por contenido" />
-                        <span asp-validation-for="Filter.SearchText"
-                              class="text-danger"></span>
+                        <span asp-validation-for="Filter.SearchText" class="text-danger small"></span>
                     </div>
                     <div class="col-12 col-md-3">
                         <label asp-for="Filter.MediaType" class="form-label">Tipo de publicación</label>
@@ -37,7 +49,7 @@
                             <option value="@PostMediaType.Image">Imagen</option>
                             <option value="@PostMediaType.YouTubeVideo">Video de YouTube</option>
                         </select>
-                        <span asp-validation-for="Filter.MediaType" class="text-danger"></span>
+                        <span asp-validation-for="Filter.MediaType" class="text-danger small"></span>
                     </div>
                     <div class="col-12 col-md-3">
                         <label asp-for="Filter.IsEdited" class="form-label">Estado de edición</label>
@@ -50,176 +62,164 @@
                     <div class="col-12 col-md-6">
                         <label asp-for="Filter.StartDate" class="form-label">Fecha inicial</label>
                         <input asp-for="Filter.StartDate" type="date" class="form-control" />
-                        <span asp-validation-for="Filter.StartDate" class="text-danger"></span>
+                        <span asp-validation-for="Filter.StartDate" class="text-danger small"></span>
                     </div>
                     <div class="col-12 col-md-6">
                         <label asp-for="Filter.EndDate" class="form-label">Fecha final</label>
                         <input asp-for="Filter.EndDate" type="date" class="form-control" />
-                        <span asp-validation-for="Filter.EndDate" class="text-danger"></span>
+                        <span asp-validation-for="Filter.EndDate" class="text-danger small"></span>
                     </div>
-                    <div class="col-12 d-flex gap-2">
+                    <div class="col-12 d-flex flex-wrap gap-2">
                         <button type="submit" class="btn btn-primary">Buscar</button>
-                        <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Limpiar filtros</a>
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Limpiar filtros</a>
                     </div>
                 </div>
             </form>
         </div>
-    </div>
+    </section>
 
-    @if (Model.Posts.Count == 0)
-    {
-        <div class="text-center mt-4">
-            <p>Todavía no ha realizado ninguna publicación.</p>
-        </div>
-    }
-    else
-    {
-        foreach (var post in Model.Posts)
+    <section aria-labelledby="post-list-title">
+        <h2 class="h4 mb-3" id="post-list-title">Publicaciones</h2>
+
+        @if (Model.Posts.Count == 0)
         {
-            <div class="card mb-3">
-                <div class="card-body">
-
-                    <div class="d-flex align-items-center mb-3">
-                        @{
-                            string profileImagePath = string.IsNullOrWhiteSpace(post.UserProfilePicturePath)
-                                ? Url.Content("~/Images/Defaults/default-profile.png")
-                                : Url.Content($"~/{post.UserProfilePicturePath}");
-                        }
-
-                        <img src="@profileImagePath"
-                             alt="Foto de perfil de @post.UserName"
-                             class="post-profile-image rounded-circle me-3" />
-
-                        <div>
-                            <h5 class="card-title mb-1">@post.UserName</h5>
-
-                            <small class="text-muted">
-                                @post.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC
-                            </small>
-                        </div>
-                    </div>
-
-                    <p class="card-text">@post.Content</p>
-
-                    <div class="mb-3">
-                        <span class="badge bg-secondary">@(post.Privacy == PostPrivacy.FriendsOnly ? "Solo amigos" : "Solo yo")</span>
-                        @if (post.AllowComments)
-                        {
-                            <span class="badge bg-success">Comentarios permitidos</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-danger">Comentarios desactivados</span>
-                        }
-
-                    </div>
-
-                    @if (post.MediaType == PostMediaType.Image && !string.IsNullOrWhiteSpace(post.ImagePath))
-                    {
-                        <div class="mb-3">
-                            <img src="@Url.Content($"~/{post.ImagePath}")" alt="Imagen de la publicación" class="img-fluid rounded" />
-                        </div>
-                    }
-
-                    @if (post.MediaType == PostMediaType.YouTubeVideo && !string.IsNullOrWhiteSpace(post.YouTubeEmbedUrl))
-                    {
-                        <div class="ratio ratio-16x9 mb-3">
-                            <iframe src="@post.YouTubeEmbedUrl"
-                                    title="Video de YouTube"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                    referrerpolicy="strict-origin-when-cross-origin"
-                                    allowfullscreen>
-                            </iframe>
-                        </div>
-                    }
-
-                    @if (post.UpdatedAt.HasValue)
-                    {
-                        <small class="text-muted">Editada</small>
-                    }
-
-                    
-                    <div class="d-flex gap-2 mb-3">
-                        <form asp-controller="Reaction" asp-action="Toggle" method="post">
-                            <input type="hidden" name="PostId" value="@post.Id" />
-                            <input type="hidden" name="ReactionType" value="@ReactionType.Like" />
-                            <button type="submit" class="btn @(post.CurrentUserReaction == ReactionType.Like ? "btn-primary" : "btn-outline-primary")">
-                                Me gusta (@post.LikesCount)
-                            </button>
-                        </form>
-                        <form asp-controller="Reaction" asp-action="Toggle" method="post">
-                            <input type="hidden" name="PostId" value="@post.Id" />
-                            <input type="hidden" name="ReactionType" value="@ReactionType.Dislike" />
-                            <button type="submit" class="btn @(post.CurrentUserReaction == ReactionType.Dislike ? "btn-danger" : "btn-outline-danger")">
-                                No me gusta (@post.DislikesCount)
-                            </button>
-                        </form>
-                    </div>
-                    
-                    @if (post.CurrentUserReaction.HasValue)
-                    {
-                        <div class="d-flex align-items-center gap-2 mb-3">
-                            <span class="text-muted">
-                                Tu reacción:
-                                @(post.CurrentUserReaction == ReactionType.Like ? "Me gusta" : "No me gusta")
-                            </span>
-
-                            <form asp-controller="Reaction" asp-action="Toggle" method="post">
-
-                                <input type="hidden" name="PostId" value="@post.Id" />
-
-                                <input type="hidden" name="ReactionType" value="@post.CurrentUserReaction.Value" />
-
-                                <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                    Eliminar reacción
-                                </button>
-                            </form>
-                        </div>
-                    }
-                    
-                    <div id="comments-@post.Id" class="mt-3">
-                        <h6 class="mb-3">
-                            Comentarios (@post.CommentsCount)
-                        </h6>
-
-                        @{
-                            ViewData["CommentsEnabled"] = post.AllowComments;
-                        }
-
-                        @if (post.Comments.Count > 0)
-                        {
-                            @foreach (var comment in post.Comments)
-                            {
-                                <partial name="~/Views/Home/_CommentItem.cshtml" model="comment" />
-                            }
-                        }
-                        else
-                        {
-                            <p class="text-muted">
-                                Todavía no hay comentarios.
-                            </p>
-                        }
-                        
-                        @if (post.AllowComments)
-                        {
-                            <partial name="~/Views/Comment/_CreateCommentForm.cshtml" model="new CreateCommentViewModel { PostId = post.Id }" />
-                        }
-                        else
-                        {
-                            <p class="text-muted">
-                                Los comentarios están desactivados para esta publicación.
-                            </p>
-                        }
-                    </div>
-
-                    <div class="mt-3">
-                        <a asp-controller="Post" asp-action="Edit" asp-route-postId="@post.Id" class="btn btn-warning">Editar</a>
-                        <a asp-controller="Post" asp-action="Delete" asp-route-postId="@post.Id" class="btn btn-danger">Eliminar</a>
-                    </div>
+            <div class="card home-card">
+                <div class="card-body home-empty-state text-center">
+                    <h3 class="h5">@(hasActiveFilters ? "Sin resultados" : "Aún no hay publicaciones")</h3>
+                    <p class="text-muted mb-0">
+                        @(hasActiveFilters
+                            ? "No se encontraron publicaciones que coincidan con los criterios seleccionados."
+                            : "Todavía no ha realizado ninguna publicación.")
+                    </p>
                 </div>
             </div>
         }
-    }
+        else
+        {
+            @foreach (var post in Model.Posts)
+            {
+                string profileImagePath = string.IsNullOrWhiteSpace(post.UserProfilePicturePath)
+                    ? Url.Content("~/Images/Defaults/default-profile.png")
+                    : Url.Content($"~/{post.UserProfilePicturePath}");
+
+                <article class="card post-card mb-3" id="post-@post.Id">
+                    <div class="card-body">
+                        <header class="post-card__header">
+                            <img src="@profileImagePath"
+                                 alt="Foto de perfil de @post.UserName"
+                                 class="post-profile-image rounded-circle" />
+                            <div class="post-card__author">
+                                <h3 class="post-card__username">@post.UserName</h3>
+                                <span class="post-card__date">@post.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC</span>
+                            </div>
+                        </header>
+
+                        <p class="post-card__content">@post.Content</p>
+
+                        <div class="post-card__badges mb-3">
+                            <span class="post-status post-status--privacy">
+                                @(post.Privacy == PostPrivacy.FriendsOnly ? "Solo amigos" : "Solo yo")
+                            </span>
+                            <span class="post-status @(post.AllowComments ? "post-status--enabled" : "post-status--disabled")">
+                                @(post.AllowComments ? "Comentarios permitidos" : "Comentarios desactivados")
+                            </span>
+                            @if (post.UpdatedAt.HasValue)
+                            {
+                                <span class="post-status post-status--edited">Editada</span>
+                            }
+                        </div>
+
+                        @if (post.MediaType == PostMediaType.Image && !string.IsNullOrWhiteSpace(post.ImagePath))
+                        {
+                            <div class="post-card__media mb-3">
+                                <img src="@Url.Content($"~/{post.ImagePath}")"
+                                     alt="Imagen de la publicación" class="img-fluid" />
+                            </div>
+                        }
+                        else if (post.MediaType == PostMediaType.YouTubeVideo && !string.IsNullOrWhiteSpace(post.YouTubeEmbedUrl))
+                        {
+                            <div class="ratio ratio-16x9 post-card__video mb-3">
+                                <iframe src="@post.YouTubeEmbedUrl"
+                                        title="Video de YouTube"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        referrerpolicy="strict-origin-when-cross-origin"
+                                        allowfullscreen>
+                                </iframe>
+                            </div>
+                        }
+
+                        <div class="post-card__reactions" aria-label="Reacciones de la publicación">
+                            <form asp-controller="Reaction" asp-action="Toggle" method="post">
+                                <input type="hidden" name="PostId" value="@post.Id" />
+                                <input type="hidden" name="ReactionType" value="@ReactionType.Like" />
+                                <button type="submit" class="btn btn-sm @(post.CurrentUserReaction == ReactionType.Like ? "btn-primary" : "btn-outline-primary")"
+                                        aria-pressed="@(post.CurrentUserReaction == ReactionType.Like ? "true" : "false")">
+                                    Me gusta (@post.LikesCount)
+                                </button>
+                            </form>
+                            <form asp-controller="Reaction" asp-action="Toggle" method="post">
+                                <input type="hidden" name="PostId" value="@post.Id" />
+                                <input type="hidden" name="ReactionType" value="@ReactionType.Dislike" />
+                                <button type="submit" class="btn btn-sm @(post.CurrentUserReaction == ReactionType.Dislike ? "btn-danger" : "btn-outline-danger")"
+                                        aria-pressed="@(post.CurrentUserReaction == ReactionType.Dislike ? "true" : "false")">
+                                    No me gusta (@post.DislikesCount)
+                                </button>
+                            </form>
+                        </div>
+
+                        @if (post.CurrentUserReaction.HasValue)
+                        {
+                            <div class="post-card__reaction-current">
+                                <span class="text-muted small">
+                                    Tu reacción: @(post.CurrentUserReaction == ReactionType.Like ? "Me gusta" : "No me gusta")
+                                </span>
+                                <form asp-controller="Reaction" asp-action="Toggle" method="post">
+                                    <input type="hidden" name="PostId" value="@post.Id" />
+                                    <input type="hidden" name="ReactionType" value="@post.CurrentUserReaction.Value" />
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Eliminar reacción</button>
+                                </form>
+                            </div>
+                        }
+
+                        <section class="post-card__comments" id="comments-@post.Id" aria-label="Comentarios de la publicación">
+                            <h4 class="h6 mb-3">Comentarios (@post.CommentsCount)</h4>
+                            @{ ViewData["CommentsEnabled"] = post.AllowComments; }
+                            @if (post.Comments.Count > 0)
+                            {
+                                @foreach (var comment in post.Comments)
+                                {
+                                    <partial name="~/Views/Home/_CommentItem.cshtml" model="comment" />
+                                }
+                            }
+                            else
+                            {
+                                <p class="text-muted small mb-3">Todavía no hay comentarios.</p>
+                            }
+
+                            @if (post.AllowComments)
+                            {
+                                <partial name="~/Views/Comment/_CreateCommentForm.cshtml"
+                                         model="new CreateCommentViewModel { PostId = post.Id }" />
+                            }
+                            else
+                            {
+                                <div class="post-comments-disabled" role="note">
+                                    Los comentarios están desactivados para esta publicación.
+                                </div>
+                            }
+                        </section>
+
+                        <footer class="post-card__actions">
+                            <a asp-controller="Post" asp-action="Edit" asp-route-postId="@post.Id"
+                               class="btn btn-outline-secondary btn-sm">Editar</a>
+                            <a asp-controller="Post" asp-action="Delete" asp-route-postId="@post.Id"
+                               class="btn btn-outline-danger btn-sm">Eliminar</a>
+                        </footer>
+                    </div>
+                </article>
+            }
+        }
+    </section>
 </div>
 
 @section Scripts {

@@ -1,150 +1,435 @@
 ﻿using AutoMapper;
+using LinkUpPro.Core.Application.Dtos.Battleship;
+using LinkUpPro.Core.Application.Dtos.Friendship;
+using LinkUpPro.Core.Application.Enums;
 using LinkUpPro.Core.Application.Interfaces;
+using LinkUpPro.Core.Application.Results;
+using LinkUpPro.Core.Application.ViewModels.Battleship;
 using LinkUpPro.Core.Domain.Enums;
-using LinkUpPro.Core.Domain.Exceptions;
-using LinkUpPro.ViewModels.Battleship;
-using LinkUpPro.ViewModels.Social;
+using LinkUpPro.Infrastructure.Identity.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
-namespace LinkUpPro.Controllers;
-
-/// <summary>Handles the multi-screen Battleship workflow without calculating game rules in Web.</summary>
-public sealed class BattleshipController(IBattleshipService games, IMapper mapper) : SocialController
+namespace LinkUpPro.Controllers
 {
-    /// <summary>Displays active games, historical results, and win/loss totals.</summary>
-    [HttpGet]
-    public async Task<IActionResult> Index()
+    [Authorize]
+    public class BattleshipController : Controller
     {
-        var list = mapper.Map<List<GameSummaryViewModel>>(await games.GetGamesAsync());
-        return View(new BattleshipIndexViewModel
-        {
-            Active = list.Where(g => g.Status != BattleshipStatus.Finished).ToList(),
-            History = list.Where(g => g.Status == BattleshipStatus.Finished).OrderByDescending(g => g.CompletedAt).ToList()
-        });
-    }
+        private readonly IBattleshipGameService _gameService;
+        private readonly IBattleshipPlacementService _placementService;
+        private readonly IBattleshipAttackService _attackService;
+        private readonly UserManager<AppUser> _userManager;
+        private readonly IMapper _mapper;
 
-    /// <summary>Lists eligible friends who do not share another unfinished game with the caller.</summary>
-    [HttpGet]
-    public async Task<IActionResult> New(string? search) => View(new NewGameViewModel
-    {
-        Search = search, Candidates = mapper.Map<List<PublicUserViewModel>>(await games.GetEligibleOpponentsAsync(search))
-    });
-
-    /// <summary>Creates a game after server-side eligibility checks and opens its setup workflow.</summary>
-    [HttpPost]
-    public async Task<IActionResult> New(NewGameViewModel model)
-    {
-        if (ModelState.IsValid)
+        public BattleshipController(
+            IBattleshipGameService gameService,
+            IBattleshipPlacementService placementService,
+            IBattleshipAttackService attackService,
+            UserManager<AppUser> userManager,
+            IMapper mapper)
         {
-            try { return RedirectToAction(nameof(Game), new { id = await games.CreateAsync(model.OpponentId!) }); }
-            catch (DomainRuleException exception) { ModelState.AddModelError("", exception.Message); }
+            _gameService = gameService;
+            _placementService = placementService;
+            _attackService = attackService;
+            _userManager = userManager;
+            _mapper = mapper;
         }
-        model.Candidates = mapper.Map<List<PublicUserViewModel>>(await games.GetEligibleOpponentsAsync(model.Search));
-        return View(model);
-    }
 
-    /// <summary>Resumes setup, waiting, combat, or completed results according to persisted state.</summary>
-    [HttpGet]
-    public async Task<IActionResult> Game(int id)
-    {
-        var model = await LoadAsync(id);
-        if (model.Status == BattleshipStatus.Setup && model.UnplacedShipNumbers.Count > 0)
-            return View("Ships", model);
-        return View(model);
-    }
-
-    /// <summary>Displays selectable starting cells for one still-unplaced ship.</summary>
-    [HttpGet]
-    public async Task<IActionResult> SelectCell(int id, int? shipNumber)
-    {
-        var model = await LoadAsync(id);
-        if (model.Status != BattleshipStatus.Setup || !shipNumber.HasValue || !model.UnplacedShipNumbers.Contains(shipNumber.Value))
-            throw new DomainRuleException("El barco seleccionado ya no se encuentra disponible.");
-        model.SelectedShipNumber = shipNumber.Value;
-        return View(model);
-    }
-
-    /// <summary>Shows the final direction choice after validating the starting cell and ship.</summary>
-    [HttpGet]
-    public async Task<IActionResult> Direction(int id, int shipNumber, int row, int column)
-    {
-        var game = await LoadAsync(id);
-        if (game.Status != BattleshipStatus.Setup || !game.UnplacedShipNumbers.Contains(shipNumber)
-            || row < 0 || row > 11 || column < 0 || column > 11
-            || game.OwnShipCells.Any(c => c.Row == row && c.Column == column))
-            throw new DomainRuleException("Debe seleccionar una celda y un barco disponibles.");
-        return View(new PlaceShipViewModel { Id = id, Version = game.Version, ShipNumber = shipNumber, Row = row, Column = column,
-            OwnShipCells = game.OwnShipCells });
-    }
-
-    /// <summary>Places a ship using validated input; geometry and concurrency are checked by the service.</summary>
-    [HttpPost]
-    public async Task<IActionResult> Place(PlaceShipViewModel model)
-    {
-        if (ModelState.IsValid)
+        [HttpGet]
+        public async Task<IActionResult> Index()
         {
-            try
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            ServiceResultWithData<BattleshipGameListDto> result =
+                await _gameService.GetMyGamesAsync(user.Id);
+
+            if (!result.IsSuccess || result.Data == null)
+                return ReadFailure(result);
+
+            BattleshipIndexViewModel vm =
+                _mapper.Map<BattleshipIndexViewModel>(result.Data);
+
+            return View(vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> New(string? searchText)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            ServiceResultWithData<List<FriendDto>> result =
+                await _gameService.GetAvailableOpponentsAsync(user.Id, searchText);
+
+            if (!result.IsSuccess) return ReadFailure(result);
+
+            NewBattleshipGameViewModel vm = new()
             {
-                await games.PlaceShipAsync(model.Id, model.Version, model.ShipNumber, model.Row, model.Column, model.Direction!.Value);
-                return RedirectToAction(nameof(Game), new { id = model.Id });
-            }
-            catch (DomainRuleException exception) { ModelState.AddModelError("", exception.Message); }
+                SearchText = searchText?.Trim(),
+                Opponents = MapOpponents(result.Data ?? [], searchText)
+            };
+
+            return View(vm);
         }
-        // Reload the preview from the server so the redisplayed form never trusts posted board data.
-        model.OwnShipCells = (await LoadAsync(model.Id)).OwnShipCells;
-        return View("Direction", model);
-    }
 
-    /// <summary>Submits one protected attack and reloads the authoritative game state.</summary>
-    [HttpPost]
-    public async Task<IActionResult> Attack(AttackViewModel model)
-    {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-        await games.AttackAsync(model.Id, model.Version, model.Row, model.Column);
-        return RedirectToAction(nameof(Game), new { id = model.Id });
-    }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(NewBattleshipGameViewModel vm)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
 
-    /// <summary>Shows only the current participant's fleet placement.</summary>
-    [HttpGet]
-    public async Task<IActionResult> OwnBoard(int id)
-    {
-        var model = await LoadAsync(id);
-        model.ShowOwnBoard = true;
-        return View("Game", model);
-    }
+            if (ModelState.IsValid)
+            {
+                ServiceResultWithData<int> result = await _gameService.CreateAsync(
+                    user.Id, vm.SelectedOpponentUserId!);
 
-    /// <summary>Reveals the other player's attack history only after the game is complete.</summary>
-    [HttpGet]
-    public async Task<IActionResult> OpponentBoard(int id)
-    {
-        var model = await LoadAsync(id);
-        if (model.Status != BattleshipStatus.Finished)
-            throw new DomainRuleException("No posee permisos para visualizar el tablero del oponente durante la partida.");
-        model.ShowOpponentAttacks = true;
-        return View("Game", model);
-    }
+                if (result.IsSuccess)
+                {
+                    TempData["BattleshipSuccess"] = "La partida fue creada correctamente.";
+                    return RedirectToAction(nameof(Setup), new { gameId = result.Data });
+                }
 
-    /// <summary>Shows a surrender confirmation without changing the game.</summary>
-    [HttpGet]
-    public async Task<IActionResult> ConfirmSurrender(int id)
-    {
-        var model = await LoadAsync(id);
-        if (model.Status == BattleshipStatus.Finished)
-            throw new DomainRuleException("La partida ya finalizó.");
-        return View(new GameActionViewModel { Id = id, Version = model.Version });
-    }
+                if (result.Status == OperationStatus.Unauthorized) return Challenge();
+                if (result.Status == OperationStatus.Forbidden) return Forbid();
 
-    /// <summary>Completes surrender through an antiforgery-protected, version-checked operation.</summary>
-    [HttpPost]
-    public async Task<IActionResult> Surrender(GameActionViewModel model)
-    {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-        await games.SurrenderAsync(model.Id, model.Version);
-        TempData["Success"] = "La partida finalizó. Consulte el resultado en su historial.";
-        return RedirectToAction(nameof(Index));
-    }
+                foreach (string error in result.Errors)
+                    ModelState.AddModelError(string.Empty, error);
+            }
 
-    /// <summary>Maps safe service output to a screen-specific model.</summary>
-    private async Task<GameDetailsViewModel> LoadAsync(int id)
-        => mapper.Map<GameDetailsViewModel>(await games.GetGameAsync(id));
+            ServiceResultWithData<List<FriendDto>> available =
+                await _gameService.GetAvailableOpponentsAsync(user.Id, vm.SearchText);
+
+            if (!available.IsSuccess) return ReadFailure(available);
+
+            vm.Opponents = MapOpponents(available.Data ?? [], vm.SearchText);
+            return View("New", vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Details(int gameId)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            ServiceResultWithData<BattleshipGameDto> result =
+                await _gameService.GetGameAsync(gameId, user.Id);
+
+            if (!result.IsSuccess || result.Data == null)
+                return ReadFailure(result);
+
+            if (result.Data.Status == BattleshipGameStatus.SettingUp)
+                return RedirectToAction(nameof(Setup), new { gameId });
+
+            if (result.Data.Status == BattleshipGameStatus.InProgress)
+                return RedirectToAction(nameof(AttackBoard), new { gameId });
+
+            return RedirectToAction(nameof(Result), new { gameId });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Setup(int gameId)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            ServiceResultWithData<BattleshipPlacementDto> result =
+                await _placementService.GetPlacementAsync(gameId, user.Id);
+            if (!result.IsSuccess || result.Data == null) return ReadFailure(result);
+
+            if (result.Data.Status != BattleshipGameStatus.SettingUp)
+                return RedirectToAction(nameof(Details), new { gameId });
+
+            return View(_mapper.Map<BattleshipPlacementViewModel>(result.Data));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SelectCell(int gameId, int shipNumber)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            ServiceResultWithData<BattleshipPlacementDto> result =
+                await _placementService.GetPlacementAsync(gameId, user.Id);
+            if (!result.IsSuccess || result.Data == null) return ReadFailure(result);
+
+            BattleshipShipOptionDto? option = result.Data.RemainingShips
+                .FirstOrDefault(s => s.ShipNumber == shipNumber);
+
+            if (result.Data.Status != BattleshipGameStatus.SettingUp || option == null)
+            {
+                TempData["BattleshipPlacementError"] = "El barco seleccionado ya no está disponible.";
+                return RedirectToAction(nameof(Setup), new { gameId });
+            }
+
+            return View(new BattleshipSelectCellViewModel
+            {
+                Placement = _mapper.Map<BattleshipPlacementViewModel>(result.Data),
+                ShipNumber = shipNumber,
+                ShipSize = option.Size
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SelectDirection(int gameId,
+            int shipNumber, int row, int column)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            ServiceResultWithData<BattleshipPlacementDto> result =
+                await _placementService.GetPlacementAsync(gameId, user.Id);
+            if (!result.IsSuccess || result.Data == null) return ReadFailure(result);
+
+            bool shipAvailable = result.Data.RemainingShips
+                .Any(s => s.ShipNumber == shipNumber);
+            bool occupied = result.Data.OccupiedCells
+                .Any(c => c.Row == row && c.Column == column);
+
+            if (result.Data.Status != BattleshipGameStatus.SettingUp ||
+                !shipAvailable || row is < 0 or > 11 || column is < 0 or > 11 || occupied)
+            {
+                TempData["BattleshipPlacementError"] =
+                    "El barco o la casilla ya no está disponible.";
+                return RedirectToAction(nameof(Setup), new { gameId });
+            }
+
+            return View(new BattleshipPlaceShipViewModel
+            {
+                GameId = gameId,
+                ShipNumber = shipNumber,
+                Row = row,
+                Column = column
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PlaceShip(BattleshipPlaceShipViewModel vm)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            if (!ModelState.IsValid)
+            {
+                TempData["BattleshipPlacementError"] =
+                    string.Join(" ", ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage));
+                return RedirectToAction(nameof(SelectDirection), new
+                {
+                    gameId = vm.GameId,
+                    shipNumber = vm.ShipNumber,
+                    row = vm.Row,
+                    column = vm.Column
+                });
+            }
+
+            ServiceResult result = await _placementService.PlaceShipAsync(
+                vm.GameId, user.Id, vm.ShipNumber, vm.Row,
+                vm.Column, vm.Direction!.Value);
+
+            if (result.IsSuccess)
+            {
+                TempData["BattleshipPlacementSuccess"] = "Barco colocado correctamente.";
+                return RedirectToAction(nameof(Setup), new { gameId = vm.GameId });
+            }
+
+            if (result.Status == OperationStatus.Unauthorized) return Challenge();
+            if (result.Status == OperationStatus.Forbidden) return Forbid();
+            if (result.Status == OperationStatus.NotFound) return NotFound();
+
+            TempData["BattleshipPlacementError"] = result.Errors.Count > 0
+                ? string.Join(" ", result.Errors)
+                : "No fue posible colocar el barco.";
+
+            return result.Status == OperationStatus.ValidationError
+                ? RedirectToAction(nameof(SelectDirection), new
+                {
+                    gameId = vm.GameId,
+                    shipNumber = vm.ShipNumber,
+                    row = vm.Row,
+                    column = vm.Column
+                })
+                : RedirectToAction(nameof(Setup), new { gameId = vm.GameId });
+        }
+
+
+        [HttpGet]
+        public async Task<IActionResult> AttackBoard(int gameId)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            ServiceResultWithData<BattleshipAttackBoardDto> result =
+                await _attackService.GetAttackBoardAsync(gameId, user.Id);
+
+            if (result.Status == OperationStatus.Conflict)
+                return RedirectToAction(nameof(Setup), new { gameId });
+            if (!result.IsSuccess || result.Data == null)
+                return ReadFailure(result);
+
+            return View(_mapper.Map<BattleshipAttackBoardViewModel>(result.Data));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> MyBoard(int gameId)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            ServiceResultWithData<BattleshipOwnBoardDto> result =
+                await _attackService.GetOwnBoardAsync(gameId, user.Id);
+
+            if (!result.IsSuccess || result.Data == null)
+                return ReadFailure(result);
+
+            return View(_mapper.Map<BattleshipOwnBoardViewModel>(result.Data));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Attack(BattleshipAttackViewModel vm)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            if (!ModelState.IsValid)
+            {
+                TempData["BattleshipAttackError"] =
+                    "Seleccione una casilla válida del tablero.";
+                return RedirectToAction(nameof(AttackBoard), new { gameId = vm.GameId });
+            }
+
+            ServiceResult result = await _attackService.AttackAsync(
+                vm.GameId, user.Id, vm.Row, vm.Column);
+
+            if (result.Status == OperationStatus.Unauthorized) return Challenge();
+            if (result.Status == OperationStatus.Forbidden) return Forbid();
+            if (result.Status == OperationStatus.NotFound) return NotFound();
+
+            TempData[result.IsSuccess ? "BattleshipAttackSuccess" : "BattleshipAttackError"] =
+                result.IsSuccess ? "Ataque registrado."
+                    : result.Errors.Count > 0 ? string.Join(" ", result.Errors)
+                    : "No se pudo registrar el ataque.";
+
+            return RedirectToAction(nameof(AttackBoard), new { gameId = vm.GameId });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Surrender(int gameId)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            ServiceResultWithData<BattleshipGameDto> result =
+                await _gameService.GetGameAsync(gameId, user.Id);
+            if (!result.IsSuccess || result.Data == null) return ReadFailure(result);
+
+            if (result.Data.Status == BattleshipGameStatus.Finished)
+                return RedirectToAction(nameof(Result), new { gameId });
+
+            return View(new BattleshipSurrenderViewModel
+            {
+                GameId = gameId,
+                OpponentUserName = result.Data.OpponentUserName
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConfirmSurrender(int gameId)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            ServiceResult result = await _gameService.SurrenderAsync(gameId, user.Id);
+            if (result.IsSuccess)
+            {
+                TempData["BattleshipSuccess"] =
+                    "Te has rendido. La partida fue finalizada correctamente.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (result.Status == OperationStatus.Unauthorized) return Challenge();
+            if (result.Status == OperationStatus.Forbidden) return Forbid();
+            if (result.Status == OperationStatus.NotFound) return NotFound();
+
+            TempData["BattleshipError"] = result.Errors.Count > 0
+                ? string.Join(" ", result.Errors) : "No se pudo finalizar la partida.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        public Task<IActionResult> Result(int gameId) =>
+            ShowResultAsync(gameId, showOpponentBoard: false);
+
+        [HttpGet]
+        public Task<IActionResult> OpponentResult(int gameId) =>
+            ShowResultAsync(gameId, showOpponentBoard: true);
+
+        private async Task<IActionResult> ShowResultAsync(int gameId, bool showOpponentBoard)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+            if (!user.EmailConfirmed) return Forbid();
+
+            ServiceResultWithData<BattleshipResultDto> result =
+                await _gameService.GetResultAsync(gameId, user.Id);
+
+            if (result.Status == OperationStatus.Conflict)
+                return RedirectToAction(nameof(Details), new { gameId });
+
+            if (!result.IsSuccess || result.Data == null)
+                return ReadFailure(result);
+
+            BattleshipResultViewModel vm =
+                _mapper.Map<BattleshipResultViewModel>(result.Data);
+            vm.ShowOpponentBoard = showOpponentBoard;
+            return View("Result", vm);
+        }
+
+        private List<BattleshipOpponentViewModel> MapOpponents(
+            IEnumerable<FriendDto> friends, string? searchText)
+        {
+            IEnumerable<FriendDto> filtered = friends;
+
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                string term = searchText.Trim();
+                filtered = filtered.Where(friend =>
+                    friend.UserName.Contains(term, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return _mapper.Map<List<BattleshipOpponentViewModel>>(filtered.ToList());
+        }
+
+        private IActionResult ReadFailure(ServiceResult result)
+        {
+            return result.Status switch
+            {
+                OperationStatus.Unauthorized => Challenge(),
+                OperationStatus.Forbidden => Forbid(),
+                OperationStatus.NotFound => NotFound(),
+                OperationStatus.ValidationError => BadRequest(result.Errors),
+                OperationStatus.Conflict => Conflict(result.Errors),
+                _ => Problem("No fue posible completar la consulta de Battleship.")
+            };
+        }
+    }
 }

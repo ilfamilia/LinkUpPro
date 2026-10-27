@@ -1,0 +1,82 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Battleship.BattleshipGameViewModel
+@using LinkUpPro.Core.Domain.Enums
+
+@{
+    ViewData["Title"] = "Detalle de la partida";
+    string statusText = Model.Status switch
+    {
+        BattleshipGameStatus.SettingUp => "Posicionando barcos",
+        BattleshipGameStatus.InProgress => "En curso",
+        _ => "Finalizada"
+    };
+    string? endReasonText = Model.EndReason switch
+    {
+        BattleshipGameEndReason.AllShipsSunk => "Todos los barcos del rival fueron hundidos",
+        BattleshipGameEndReason.Surrender => "Rendición",
+        BattleshipGameEndReason.Abandonment => "Abandono",
+        _ => null
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
+}
+
+<div class="container battleship-page battleship-page--medium mt-4 mb-5">
+    <div class="battleship-page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h1 class="h2 mb-0">Partida #@Model.Id</h1>
+        <a asp-action="Index" class="btn btn-outline-secondary">Volver a Battleship</a>
+    </div>
+
+    @if (TempData["BattleshipSuccess"] is string success)
+    {
+        <div class="alert alert-success" role="status">@success</div>
+    }
+    @if (TempData["BattleshipPlacementSuccess"] is string placementSuccess)
+    {
+        <div class="alert alert-success" role="status">@placementSuccess</div>
+    }
+
+    <div class="card battleship-details-card">
+        <div class="card-body">
+            <dl class="row battleship-details-list mb-0">
+                <dt class="col-sm-4">Oponente</dt>
+                <dd class="col-sm-8">@Model.OpponentUserName</dd>
+                <dt class="col-sm-4">Estado</dt>
+                <dd class="col-sm-8">@statusText</dd>
+                <dt class="col-sm-4">Creada</dt>
+                <dd class="col-sm-8">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC</dd>
+                <dt class="col-sm-4">Tu participación</dt>
+                <dd class="col-sm-8">@(Model.IsCreator ? "Creador de la partida" : "Oponente")</dd>
+            </dl>
+
+            @if (Model.Status == BattleshipGameStatus.SettingUp)
+            {
+                <div class="alert alert-info battleship-next-step mt-3 mb-0">
+                    La partida fue creada. Selecciona la colocación de los barcos para comenzar la partida.
+                    <a asp-action="Setup" asp-route-gameId="@Model.Id" class="btn btn-primary ms-2">Posicionar barcos</a>
+                </div>
+            }
+            else if (Model.Status == BattleshipGameStatus.InProgress)
+            {
+                <div class="alert alert-info battleship-next-step mt-3 mb-0">
+                    @(Model.IsMyTurn ? "Es tu turno." : "Es el turno del oponente.")
+                    <a asp-action="AttackBoard" asp-route-gameId="@Model.Id"
+                       class="btn btn-primary ms-2">Ir al tablero de ataque</a>
+                </div>
+            }
+            else
+            {
+                <div class="alert @(Model.DidIWin == true ? "alert-success" : "alert-secondary") battleship-next-step mt-3 mb-0">
+                    Resultado: @(Model.DidIWin == true ? "Victoria" : "Derrota").
+                    @if (endReasonText != null)
+                    {
+                        <span> Motivo: @endReasonText.</span>
+                    }
+                    <a asp-action="AttackBoard" asp-route-gameId="@Model.Id"
+                       class="btn btn-outline-primary ms-2">Ver resultado del tablero</a>
+                </div>
+            }
+        </div>
+    </div>
+</div>

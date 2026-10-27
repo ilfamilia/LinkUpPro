@@ -1,0 +1,178 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Friendship.FriendshipIndexViewModel
+@using LinkUpPro.Core.Domain.Enums
+
+@{
+    ViewData["Title"] = "Amigos";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Post/Posts.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Friendship/Index.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Comment/Comments.css" asp-append-version="true" />
+}
+
+<div class="friend-page my-4">
+    <header class="friend-page__intro">
+        <h1 class="mb-1">Amigos</h1>
+        <p class="text-muted mb-0">Consulta tus amistades y las publicaciones que comparten contigo.</p>
+    </header>
+
+    @if (TempData["FriendshipSuccess"] is string success)
+    {
+        <div class="alert alert-success" role="status">@success</div>
+    }
+    @if (TempData["FriendshipError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+
+    <div class="row g-3 mb-4" aria-label="Resumen de amistades">
+        <div class="col-12 col-sm-6">
+            <div class="card friend-stat h-100">
+                <div class="card-body">
+                    <h2 class="friend-stat__label">Total de amigos</h2>
+                    <p class="friend-stat__number">@Model.Summary.TotalFriends</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6">
+            <div class="card friend-stat h-100">
+                <div class="card-body">
+                    <h2 class="friend-stat__label">Publicaciones disponibles</h2>
+                    <p class="friend-stat__number">@Model.Summary.AvailablePosts</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="friend-page__section" aria-labelledby="friends-title">
+        <div class="friend-page__section-header">
+            <h2 id="friends-title" class="h4 mb-0">Mis amigos</h2>
+            <a asp-controller="FriendshipRequest" asp-action="Index" class="btn btn-outline-primary">
+                Solicitudes de amistad
+            </a>
+        </div>
+
+        <div class="card friend-filter-card mb-3">
+            <div class="card-body">
+                <form asp-controller="Friendship" asp-action="Index" method="get" class="row g-3 align-items-end">
+                    <div class="col-12 col-md-7">
+                        <label for="FriendSearch" class="form-label">Buscar por nombre, apellido o usuario</label>
+                        <input id="FriendSearch" name="FriendSearch" value="@Model.FriendSearch"
+                               maxlength="100" class="form-control" placeholder="Buscar amigos" />
+                    </div>
+                    <div class="col-12 col-md-5 d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary">Buscar</button>
+                        <a asp-controller="Friendship" asp-action="Index" class="btn btn-outline-secondary">Limpiar búsqueda</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @if (Model.Summary.TotalFriends == 0)
+        {
+            <div class="friend-empty-state" role="status"><p>Todavía no tiene amigos agregados.</p></div>
+        }
+        else if (Model.FilteredFriends.Count == 0)
+        {
+            <div class="friend-empty-state" role="status"><p>No se encontraron amigos que coincidan con el criterio ingresado.</p></div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var friend in Model.FilteredFriends)
+                {
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <partial name="_FriendCard" model="friend" />
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="friend-page__section" aria-labelledby="posts-title">
+        <div class="friend-page__section-header">
+            <h2 id="posts-title" class="h4 mb-0">Publicaciones de amigos</h2>
+        </div>
+
+        <div class="card friend-filter-card mb-4">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Buscar publicaciones</h3>
+                <form asp-controller="Friendship" asp-action="Index" method="get">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Filter.SearchText" class="form-label">Texto de búsqueda</label>
+                            <input asp-for="Filter.SearchText" class="form-control" placeholder="Buscar por contenido" />
+                            <span asp-validation-for="Filter.SearchText" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Filter.FriendUserId" class="form-label">Amigo</label>
+                            <select asp-for="Filter.FriendUserId" class="form-select">
+                                <option value="">Todos los amigos</option>
+                                @foreach (var friend in Model.Friends)
+                                {
+                                    <option value="@friend.Id">@friend.Name @friend.LastName (@friend.UserName)</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Filter.FriendUserId" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label asp-for="Filter.MediaType" class="form-label">Tipo de contenido</label>
+                            <select asp-for="Filter.MediaType" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="@PostMediaType.Image">Imagen</option>
+                                <option value="@PostMediaType.YouTubeVideo">Video de YouTube</option>
+                            </select>
+                            <span asp-validation-for="Filter.MediaType" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label asp-for="Filter.StartDate" class="form-label">Fecha desde</label>
+                            <input asp-for="Filter.StartDate" type="date" class="form-control" />
+                            <span asp-validation-for="Filter.StartDate" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label asp-for="Filter.EndDate" class="form-label">Fecha hasta</label>
+                            <input asp-for="Filter.EndDate" type="date" class="form-control" />
+                            <span asp-validation-for="Filter.EndDate" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Filter.IsEdited" class="form-label">Estado de edición</label>
+                            <select asp-for="Filter.IsEdited" class="form-select">
+                                <option value="">Todas</option>
+                                <option value="true">Editadas</option>
+                                <option value="false">No editadas</option>
+                            </select>
+                        </div>
+                        <div class="col-12 d-flex flex-wrap gap-2">
+                            <button type="submit" class="btn btn-primary">Buscar</button>
+                            <a asp-controller="Friendship" asp-action="Index" class="btn btn-outline-secondary">Limpiar filtros</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="friend-feed">
+            @if (Model.Summary.TotalFriends == 0)
+            {
+                <div class="friend-empty-state" role="status"><p>Todavía no tiene amigos agregados.</p></div>
+            }
+            else if (Model.Posts.Count == 0)
+            {
+                <div class="friend-empty-state" role="status"><p>No se encontraron publicaciones que coincidan con los criterios seleccionados.</p></div>
+            }
+            else
+            {
+                @foreach (var post in Model.Posts)
+                {
+                    <partial name="_FriendPost" model="post" />
+                }
+            }
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

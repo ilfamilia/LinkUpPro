@@ -1,0 +1,91 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Battleship.BattleshipPlacementViewModel
+@using LinkUpPro.Core.Domain.Enums
+
+@{
+    ViewData["Title"] = "Colocar barcos";
+    HashSet<(int, int)> occupied = Model.OccupiedCells
+        .Select(cell => (cell.Row, cell.Column)).ToHashSet();
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Battleship/Setup.css" asp-append-version="true" />
+}
+
+<div class="container battleship-page battleship-page--wide mt-4 mb-5">
+    <div class="battleship-page-header d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
+        <h1 class="h3 mb-0">Partida #@Model.GameId — Posicionar barcos</h1>
+        <div class="d-flex flex-wrap gap-2">
+            <a asp-action="Surrender" asp-route-gameId="@Model.GameId"
+               class="btn btn-outline-danger">Rendirse</a>
+            <a asp-action="Index" class="btn btn-outline-secondary">Volver a Battleship</a>
+        </div>
+    </div>
+
+    @if (TempData["BattleshipPlacementError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+    @if (TempData["BattleshipPlacementSuccess"] is string success)
+    {
+        <div class="alert alert-success" role="status">@success</div>
+    }
+
+    <p class="battleship-placement-progress">Barcos colocados: <strong>@Model.PlacedShipCount de 5</strong>.</p>
+
+    @if (Model.MyShipsReady)
+    {
+        <div class="alert alert-info" role="status">
+            @(Model.OpponentShipsReady
+                ? "Ambos jugadores terminaron de colocar sus barcos."
+                : "Ya terminaste de colocar tus barcos. El otro jugador aún no termina de configurarlos.")
+        </div>
+    }
+    else
+    {
+        <div class="card battleship-ship-picker mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Selecciona el próximo barco</h2>
+                <div class="d-flex gap-2 flex-wrap">
+                    @foreach (var ship in Model.RemainingShips)
+                    {
+                        <a asp-action="SelectCell"
+                           asp-route-gameId="@Model.GameId"
+                           asp-route-shipNumber="@ship.ShipNumber"
+                           class="btn btn-outline-primary">
+                            Barco @ship.ShipNumber (@ship.Size casillas)
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <h2 class="h5 battleship-section-title">Tu tablero (12 × 12)</h2>
+    <p class="small text-muted">Solo tú puedes ver la ubicación de tus barcos.</p>
+    <div class="battleship-legend" aria-label="Leyenda del tablero">
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--ship"></span> Tu barco</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--empty"></span> Libre</span>
+    </div>
+    <p class="small text-muted d-sm-none mb-2">Si no ves todas las casillas, desliza el tablero horizontalmente.</p>
+    <div class="battleship-board-scroll" tabindex="0" aria-label="Tablero de posicionamiento; desplázate horizontalmente si es necesario">
+        <div class="battleship-board" role="img" aria-label="Tablero de 12 por 12, con las casillas propias ocupadas resaltadas">
+        @for (int row = 0; row < 12; row++)
+        {
+            @for (int column = 0; column < 12; column++)
+            {
+                bool used = occupied.Contains((row, column));
+                <div class="battleship-cell @(used ? "is-occupied" : "")"
+                     title="Fila @(row + 1), columna @(column + 1): @(used ? "barco" : "vacía")"></div>
+            }
+        }
+        </div>
+    </div>
+    @if (Model.MyShipsReady)
+    {
+        <div class="mt-3">
+            <a asp-action="Index" class="btn btn-secondary">Volver atrás</a>
+            <a asp-action="Setup" asp-route-gameId="@Model.GameId"
+               class="btn btn-outline-primary">Refrescar pantalla</a>
+        </div>
+    }
+</div>

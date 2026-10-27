@@ -1,120 +1,204 @@
-using AutoMapper;
+﻿using AutoMapper;
 using LinkUpPro.Core.Application.Dtos.User;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.ViewModels.User;
+using LinkUpPro.Infrastructure.Identity.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
-namespace LinkUpPro.Controllers;
-
-/// <summary>"Mi perfil": the signed-in user edits only their own account; the id always comes from the session.</summary>
-public sealed class ProfileController(IAccountServiceForWebApp accounts, ICurrentUserService currentUser,
-    IImageStorageService imageStorage, IMapper mapper)
-    : SocialController
+namespace LinkUpPro.Controllers
 {
-    [HttpGet]
-    public async Task<IActionResult> Index()
+    [Authorize]
+    public class ProfileController : Controller
     {
-        var vm = new EditUserViewModel();
-        if (!await LoadAccountDataAsync(vm, overwriteEditableFields: true)) return Challenge();
-        return View(vm);
-    }
+        private readonly IAccountServiceForWebApp _accountService;
+        private readonly UserManager<AppUser> _userManager;
+        private readonly IMapper _mapper;
 
-    [HttpPost]
-    public async Task<IActionResult> Index(EditUserViewModel vm)
-    {
-        // Read-only values (email, username, photo) are reloaded from the server, never taken from the form.
-        if (!await LoadAccountDataAsync(vm, overwriteEditableFields: false)) return Challenge();
-
-        bool anyPassword = !string.IsNullOrEmpty(vm.CurrentPassword) || !string.IsNullOrEmpty(vm.NewPassword)
-            || !string.IsNullOrEmpty(vm.ConfirmPassword);
-        bool allPasswords = !string.IsNullOrEmpty(vm.CurrentPassword) && !string.IsNullOrEmpty(vm.NewPassword)
-            && !string.IsNullOrEmpty(vm.ConfirmPassword);
-
-        if (anyPassword && !allPasswords)
+        public ProfileController(IAccountServiceForWebApp accountService,
+            UserManager<AppUser> userManager, IMapper mapper)
         {
-            ModelState.AddModelError(string.Empty,
-                "Para cambiar su contraseña debe completar la contraseña actual, la nueva contraseña y su confirmación.");
+            _accountService = accountService;
+            _userManager = userManager;
+            _mapper = mapper;
         }
 
-        if (!ModelState.IsValid) return ProfileView(vm);
-
-        string userId = currentUser.GetRequiredUserId();
-        string? newImagePath = null;
-
-        if (vm.ProfileImageFile is not null)
+        public async Task<IActionResult> Index()
         {
+            AppUser? user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
+
+            UserDto? userDto = await _accountService.GetUserByIdAsync(user.Id);
+
+            if (userDto == null)
+            {
+                return NotFound();
+            }
+
+            EditUserViewModel vm = _mapper.Map<EditUserViewModel>(userDto);
+
+            return View(vm);
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(EditUserViewModel vm)
+        {
+            AppUser? user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
+
+            vm.UserName = user.UserName ?? string.Empty;
+            vm.Email = user.Email ?? string.Empty;
+            vm.ProfileImagePath = user.ProfilePicturePath;
+
+            if (!ModelState.IsValid)
+            {
+                return View("Index", vm);
+            }
+
+            EditUserDto dto = _mapper.Map<EditUserDto>(vm);
+
+            dto.Id = user.Id;
+            dto.Name = vm.Name.Trim();
+            dto.LastName = vm.LastName.Trim();
+            dto.Phone = vm.Phone.Trim();
+
+            string? oldImagePath = user.ProfilePicturePath;
+            string? newImagePath = null;
+
+            bool updateSucceeded = false;
+
             try
             {
-                newImagePath = await imageStorage.SaveAsync(vm.ProfileImageFile, userId, "Users");
+                if (vm.ProfileImageFile != null)
+                {
+                    try
+                    {
+                        newImagePath = LinkUpPro.Helpers.FileManager.Upload(vm.ProfileImageFile,
+                            user.Id, "Users");
+                    }
+                    catch (InvalidDataException ex)
+                    {
+                        ModelState.AddModelError(nameof(vm.ProfileImageFile), ex.Message);
+
+                        return View("Index", vm);
+                    }
+                    catch (IOException)
+                    {
+                        ModelState.AddModelError(nameof(vm.ProfileImageFile),
+                            "No fue posible actualizar la foto de perfil.");
+
+                        return View("Index", vm);
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        ModelState.AddModelError(nameof(vm.ProfileImageFile),
+                            "No fue posible actualizar la foto de perfil.");
+
+                        return View("Index", vm);
+                    }
+                }
+
+                dto.ProfileImage = newImagePath;
+
+                string origin = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+
+                EditResponseDto result = await _accountService.EditUserAsync(dto, origin);
+
+                if (result.HasError)
+                {
+                    foreach (string error in result.Errors)
+                    {
+                        ModelState.AddModelError(string.Empty, error);
+                    }
+
+                    vm.CurrentPassword = null;
+                    vm.NewPassword = null;
+                    vm.ConfirmPassword = null;
+
+                    ModelState.Remove(nameof(vm.CurrentPassword));
+                    ModelState.Remove(nameof(vm.NewPassword));
+                    ModelState.Remove(nameof(vm.ConfirmPassword));
+
+                    return View("Index", vm);
+                }
+
+                updateSucceeded = true;
             }
-            catch (InvalidDataException ex)
+            finally
             {
-                ModelState.AddModelError(nameof(vm.ProfileImageFile), ex.Message);
-                return ProfileView(vm);
+                if (!updateSucceeded && !string.IsNullOrWhiteSpace(newImagePath))
+                {
+                    try
+                    {
+                        LinkUpPro.Helpers.FileManager.DeleteFile(newImagePath);
+                    }
+                    catch (IOException)
+                    {
+                        // No ocultar el error de la actualización.
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        // No ocultar el error de la actualización.
+                    }
+                }
             }
-            catch (IOException)
+
+            string userImageDirectory = $"Images/Users/{user.Id}/";
+
+            if (!string.IsNullOrWhiteSpace(newImagePath) && !string.IsNullOrWhiteSpace(oldImagePath) &&
+                oldImagePath.StartsWith(userImageDirectory, StringComparison.OrdinalIgnoreCase) &&
+                oldImagePath != newImagePath)
             {
-                ModelState.AddModelError(nameof(vm.ProfileImageFile), "No fue posible actualizar la foto de perfil. Inténtelo nuevamente.");
-                return ProfileView(vm);
+                try
+                {
+                    LinkUpPro.Helpers.FileManager.DeleteFile(oldImagePath);
+                }
+                catch (IOException)
+                {
+                    // Los cambios de Identity ya fueron guardados.
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Los cambios de Identity ya fueron guardados.
+                }
             }
+
+            bool passwordChanged = !string.IsNullOrWhiteSpace(vm.NewPassword);
+
+            if (passwordChanged)
+            {
+                await _accountService.SignOutAsync();
+
+                TempData["ProfilePasswordChanged"] = "Su perfil y contraseña fueron actualizados correctamente. " +
+                    "Inicie sesión nuevamente.";
+
+                return RedirectToAction("Index", "Login");
+            }
+
+            TempData["ProfileUpdated"] = "Su perfil fue actualizado correctamente.";
+
+            return RedirectToAction("Index", "Home");
         }
-
-        EditUserDto dto = mapper.Map<EditUserDto>(vm);
-        dto.Id = userId;
-        dto.ProfileImage = newImagePath;
-
-        EditResponseDto response = await accounts.EditUserAsync(dto);
-
-        if (response.HasError)
-        {
-            // Nothing was saved: drop the new photo and keep the previous one.
-            imageStorage.Delete(newImagePath);
-            foreach (string error in response.Errors) ModelState.AddModelError(string.Empty, error);
-            return ProfileView(vm);
-        }
-
-        // The old photo is removed only after the new one is stored and linked to the profile.
-        if (newImagePath is not null && response.PreviousProfileImage != newImagePath)
-        {
-            imageStorage.Delete(response.PreviousProfileImage);
-        }
-
-        if (response.PasswordChanged)
-        {
-            await accounts.SignOutAsync();
-            TempData["LoginSuccess"] = "Su perfil y contraseña fueron actualizados correctamente. Inicie sesión nuevamente.";
-            return RedirectToAction("Index", "Login");
-        }
-
-        TempData["Success"] = "Su perfil fue actualizado correctamente.";
-        return RedirectToAction("Index", "Home");
-    }
-
-    private async Task<bool> LoadAccountDataAsync(EditUserViewModel vm, bool overwriteEditableFields)
-    {
-        var user = await accounts.GetUserByIdAsync(currentUser.GetRequiredUserId());
-        if (user is null) return false;
-
-        vm.Email = user.Email;
-        vm.UserName = user.UserName;
-        vm.ProfileImagePath = user.ProfileImage;
-
-        if (overwriteEditableFields)
-        {
-            vm.Name = user.Name;
-            vm.LastName = user.LastName;
-            vm.Phone = user.Phone ?? "";
-        }
-
-        return true;
-    }
-
-    // Password inputs never render their value, so they always come back empty; errors stay visible.
-    private IActionResult ProfileView(EditUserViewModel vm)
-    {
-        vm.CurrentPassword = null;
-        vm.NewPassword = null;
-        vm.ConfirmPassword = null;
-        return View("Index", vm);
     }
 }

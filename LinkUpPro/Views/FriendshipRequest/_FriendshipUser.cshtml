@@ -1,0 +1,16 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.FriendshipRequest.FriendshipUserViewModel
+
+@{
+    string imagePath = string.IsNullOrWhiteSpace(Model.ProfileImage)
+        ? Url.Content("~/Images/Defaults/default-profile.png")
+        : Url.Content($"~/{Model.ProfileImage.TrimStart('/')}");
+}
+
+<div class="request-user">
+    <img src="@imagePath" alt="Foto de @Model.UserName"
+         class="request-user__avatar" loading="lazy" />
+    <div class="request-user__identity">
+        <div class="request-user__name">@Model.Name @Model.LastName</div>
+        <div class="request-user__handle">@("@" + Model.UserName)</div>
+    </div>
+</div>

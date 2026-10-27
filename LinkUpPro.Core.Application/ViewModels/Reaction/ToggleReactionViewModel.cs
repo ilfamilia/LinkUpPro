@@ -11,7 +11,5 @@ namespace LinkUpPro.Core.Application.ViewModels.Reaction
         [Required(ErrorMessage = "Debe seleccionar una reacción")]
         [EnumDataType(typeof(ReactionType), ErrorMessage = "El tipo de reacción es inválido")]
         public ReactionType? ReactionType { get; set; }
-
-        public string? ReturnUrl { get; set; }
     }
 }

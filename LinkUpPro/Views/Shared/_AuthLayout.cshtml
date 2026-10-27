@@ -1,0 +1,30 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - LinkUp Pro</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Login/Auth.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="auth-layout">
+    <main class="auth-main" role="main">
+        <div class="auth-container">
+            <div class="auth-brand-block text-center">
+                <a class="auth-brand" asp-controller="Login" asp-action="Index">LinkUp Pro</a>
+                <p class="auth-tagline">Conecta con tus amigos</p>
+            </div>
+            @RenderBody()
+        </div>
+    </main>
+    <footer class="auth-footer text-center">
+        &copy; @DateTime.Now.Year - LinkUp Pro
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

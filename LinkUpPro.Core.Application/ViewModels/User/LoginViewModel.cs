@@ -1,15 +1,16 @@
 using System.ComponentModel.DataAnnotations;
+
 namespace LinkUpPro.Core.Application.ViewModels.User
 {
     public class LoginViewModel
     {
-        [Required(ErrorMessage = "Debe ingresar su nombre de usuario.")]
+        [Required(ErrorMessage = "El nombre de usuario es obligatorio")]
         [DataType(DataType.Text)]
-        public string UserName { get; set; } = "";
+        public required string UserName { get; set; }
 
-        [Required(ErrorMessage = "Debe ingresar su contraseña.")]
+        [Required(ErrorMessage = "La contraseña es obligatoria")]
         [DataType(DataType.Password)]
-        public string Password { get; set; } = "";
+        public required string Password { get; set; }
 
         public bool RememberMe { get; set; }
     }

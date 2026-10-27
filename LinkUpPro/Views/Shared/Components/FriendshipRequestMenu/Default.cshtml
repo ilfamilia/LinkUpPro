@@ -1,0 +1,15 @@
+﻿@model int
+@{
+    bool isActive = ViewContext.RouteData.Values["controller"]?.ToString() == "FriendshipRequest";
+}
+<li class="nav-item">
+    <a asp-controller="FriendshipRequest" asp-action="Index"
+       class="nav-link @(isActive ? "active" : "")"
+       aria-current="@(isActive ? "page" : null)">
+        Solicitudes de amistad
+        @if (Model > 0)
+        {
+            <span class="badge app-nav-count" aria-label="@Model solicitudes pendientes">@Model</span>
+        }
+    </a>
+</li>

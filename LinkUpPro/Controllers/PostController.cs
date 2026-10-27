@@ -3,63 +3,34 @@ using LinkUpPro.Core.Application.Dtos.Post;
 using LinkUpPro.Core.Application.Enums;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.Results;
+using LinkUpPro.Core.Application.ViewModels.Comment;
 using LinkUpPro.Core.Application.ViewModels.Home;
 using LinkUpPro.Core.Application.ViewModels.Post;
 using LinkUpPro.Core.Domain.Enums;
-using LinkUpPro.Core.Domain.Exceptions;
-using LinkUpPro.Services;
-using LinkUpPro.ViewModels.Social;
+using LinkUpPro.Helpers;
+using LinkUpPro.Infrastructure.Identity.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace LinkUpPro.Controllers
 {
-    public class PostController : SocialController
+    [Authorize]
+    public class PostController : Controller
     {
         private readonly IPostService _postService;
-        private readonly IImageStorageService _imageStorage;
-        private readonly ICurrentUserService _currentUser;
+        private readonly ICommentService _commentService;
+        private readonly UserManager<AppUser> _userManager;
         private readonly IMapper _mapper;
-        private readonly PostFeedBuilder _feedBuilder;
 
-        public PostController(IPostService postService, IImageStorageService imageStorage,
-            ICurrentUserService currentUser, IMapper mapper, PostFeedBuilder feedBuilder)
+        public PostController(IPostService postService, ICommentService commentService,
+            UserManager<AppUser> userManager, IMapper mapper)
         {
             _postService = postService;
-            _imageStorage = imageStorage;
-            _currentUser = currentUser;
+            _commentService = commentService;
+            _userManager = userManager;
             _mapper = mapper;
-            _feedBuilder = feedBuilder;
-        }
-
-        // Single post page used by notifications and friend feeds; visibility is rechecked on every request.
-        [HttpGet]
-        public async Task<IActionResult> Details(int postId)
-        {
-            List<PostCardViewModel> cards;
-
-            try
-            {
-                // The publication service rechecks author/viewer activity, deletion, privacy and friendship.
-                cards = await _feedBuilder.BuildAsync([postId]);
-            }
-            catch (DomainRuleException)
-            {
-                cards = [];
-            }
-
-            if (cards.Count == 0)
-            {
-                return ErrorPage("No posee permisos para visualizar esta publicación.", StatusCodes.Status403Forbidden);
-            }
-
-            ViewData["CommentError"] = TempData["CommentError"]?.ToString();
-            ViewData["CommentPostId"] = TempData["CommentPostId"]?.ToString();
-            ViewData["CommentParentId"] = TempData["CommentParentId"]?.ToString();
-            ViewData["CommentContent"] = TempData["CommentContent"]?.ToString();
-            ViewData["CurrentUserId"] = _feedBuilder.CurrentUserId;
-            ViewData["FriendIds"] = await _feedBuilder.GetFriendIdsAsync();
-
-            return View(cards[0]);
         }
 
         public IActionResult Create()
@@ -68,17 +39,28 @@ namespace LinkUpPro.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreatePostViewModel vm)
         {
-            if (!ModelState.IsValid)
+            AppUser? user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
             {
-                return await ReturnHomeAsync(vm);
+                return Challenge();
             }
 
-            string userId = _currentUser.GetRequiredUserId();
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return await ReturnHomeAsync(vm, user);
+            }
 
             CreatePostDto dto = _mapper.Map<CreatePostDto>(vm);
-            dto.UserId = userId;
+            dto.UserId = user.Id;
 
             string? uploadedImagePath = null;
 
@@ -87,7 +69,7 @@ namespace LinkUpPro.Controllers
             {
                 ModelState.AddModelError(string.Empty, "No puedes incluir una imagen y un video simultáneamente.");
 
-                return await ReturnHomeAsync(vm);
+                return await ReturnHomeAsync(vm, user);
             }
 
             if (vm.MediaType == PostMediaType.Image)
@@ -96,78 +78,130 @@ namespace LinkUpPro.Controllers
                 {
                     ModelState.AddModelError(nameof(vm.ImageFile), "Debe seleccionar una imagen para crear la publicación.");
 
-                    return await ReturnHomeAsync(vm);
+                    return await ReturnHomeAsync(vm, user);
                 }
 
                 try
                 {
-                    uploadedImagePath = await _imageStorage.SaveAsync(vm.ImageFile, userId, "Posts");
+                    uploadedImagePath = FileManager.Upload(vm.ImageFile, user.Id, "Posts");
 
                     dto.ImagePath = uploadedImagePath;
                 }
                 catch (InvalidDataException ex)
                 {
                     ModelState.AddModelError(nameof(vm.ImageFile), ex.Message);
-                    return await ReturnHomeAsync(vm);
-                }
-                catch (IOException)
-                {
-                    ModelState.AddModelError(nameof(vm.ImageFile), "No fue posible guardar la imagen. Inténtelo nuevamente.");
-                    return await ReturnHomeAsync(vm);
+                    return await ReturnHomeAsync(vm, user);
                 }
             }
+
 
             ServiceResult result = await _postService.AddAsync(dto);
 
-            if (result.IsSuccess)
+            switch (result.Status)
             {
-                return RedirectToAction("Index", "Home");
+                case OperationStatus.Success:
+                    return RedirectToAction("Index", "Home");
+
+                case OperationStatus.Failed:
+                    ModelState.AddModelError(string.Empty, "No se pudo crear la publicación. Inténtelo nuevamente.");
+                    break;
+
+                default:
+                    if (!string.IsNullOrWhiteSpace(uploadedImagePath))
+                    {
+                        FileManager.DeleteFile(uploadedImagePath);
+                    }
+
+                    foreach (string error in result.Errors)
+                    {
+                        ModelState.AddModelError(string.Empty, error);
+                    }
+
+                    break;
             }
 
-            // Nothing was saved, so the uploaded image is not kept.
-            _imageStorage.Delete(uploadedImagePath);
-
-            if (result.Status == OperationStatus.Failed)
-            {
-                ModelState.AddModelError(string.Empty, "No se pudo crear la publicación. Inténtelo nuevamente.");
-            }
-            else
-            {
-                foreach (string error in result.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, error);
-                }
-            }
-
-            return await ReturnHomeAsync(vm);
+            return await ReturnHomeAsync(vm, user);
         }
 
         public async Task<IActionResult> Edit(int postId)
         {
-            var result = await _postService.GetMyPostByIdAsync(postId, _currentUser.GetRequiredUserId());
+            AppUser? user = await _userManager.GetUserAsync(User);
 
-            if (!result.IsSuccess || result.Data == null)
+            if (user == null)
             {
-                return FailurePage(result, "No se pudo cargar la publicación.");
+                return Challenge();
             }
 
-            UpdatePostViewModel vm = _mapper.Map<UpdatePostViewModel>(result.Data);
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
 
-            ViewData["PostId"] = postId;
+            var result = await _postService.GetMyPostByIdAsync(postId, user.Id);
 
-            return View(vm);
+            switch (result.Status)
+            {
+                case OperationStatus.NotFound:
+                    return NotFound(result.Errors.FirstOrDefault());
+
+                case OperationStatus.Forbidden:
+                    return StatusCode(403, result.Errors.FirstOrDefault());
+
+                case OperationStatus.ValidationError:
+                    return BadRequest(result.Errors.FirstOrDefault());
+
+                case OperationStatus.Unauthorized:
+                    return Challenge();
+
+                case OperationStatus.Failed:
+                    return Problem("No se pudo cargar la publicación.");
+
+                case OperationStatus.Success:
+                    if (result.Data == null)
+                    {
+                        return Problem("No se pudo cargar la publicación.");
+                    }
+
+                    UpdatePostViewModel vm = _mapper.Map<UpdatePostViewModel>(result.Data);
+
+                    ViewData["PostId"] = postId;
+
+                    return View(vm);
+
+                default:
+                    return Problem("Ocurrió un error inesperado.");
+            }
         }
 
+
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int postId, UpdatePostViewModel vm)
         {
-            string userId = _currentUser.GetRequiredUserId();
+            AppUser? user = await _userManager.GetUserAsync(User);
 
-            var postResult = await _postService.GetMyPostByIdAsync(postId, userId);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
+
+            var postResult = await _postService.GetMyPostByIdAsync(postId, user.Id);
 
             if (!postResult.IsSuccess || postResult.Data == null)
             {
-                return FailurePage(postResult, "No se pudo cargar la publicación.");
+                return postResult.Status switch
+                {
+                    OperationStatus.NotFound => NotFound(),
+                    OperationStatus.Forbidden => Forbid(),
+                    OperationStatus.Unauthorized => Challenge(),
+                    OperationStatus.ValidationError => BadRequest(),
+                    _ => Problem("No se pudo cargar la publicación.")
+                };
             }
 
             string? previousImagePath = postResult.Data.ImagePath;
@@ -186,7 +220,7 @@ namespace LinkUpPro.Controllers
             }
 
             UpdatePostDto dto = _mapper.Map<UpdatePostDto>(vm);
-            dto.UserId = userId;
+            dto.UserId = user.Id;
 
             string? uploadedImagePath = null;
 
@@ -194,7 +228,7 @@ namespace LinkUpPro.Controllers
             {
                 try
                 {
-                    uploadedImagePath = await _imageStorage.SaveAsync(vm.ImageFile, userId, "Posts");
+                    uploadedImagePath = FileManager.Upload(vm.ImageFile, user.Id, "Posts");
 
                     dto.ImagePath = uploadedImagePath;
                 }
@@ -204,47 +238,39 @@ namespace LinkUpPro.Controllers
 
                     return ReturnEdit(vm, postId, previousImagePath);
                 }
-                catch (IOException)
-                {
-                    ModelState.AddModelError(nameof(vm.ImageFile), "No fue posible guardar la imagen. Inténtelo nuevamente.");
-
-                    return ReturnEdit(vm, postId, previousImagePath);
-                }
             }
 
             ServiceResult result = await _postService.UpdateAsync(dto, postId);
 
-            if (result.IsSuccess)
-            {
-                // The previous image is removed only after the post no longer references it.
-                if (!string.IsNullOrWhiteSpace(previousImagePath) &&
-                    (vm.MediaType == PostMediaType.YouTubeVideo || !string.IsNullOrWhiteSpace(uploadedImagePath)))
-                {
-                    _imageStorage.Delete(previousImagePath);
-                }
-
-                return RedirectToAction("Index", "Home");
-            }
-
-            _imageStorage.Delete(uploadedImagePath);
-
             switch (result.Status)
             {
+                case OperationStatus.Success:
+                    if (!string.IsNullOrWhiteSpace(previousImagePath) &&
+                        (vm.MediaType == PostMediaType.YouTubeVideo ||
+                         !string.IsNullOrWhiteSpace(uploadedImagePath)))
+                    {
+                        FileManager.DeleteFile(previousImagePath);
+                    }
+
+                    return RedirectToAction("Index", "Home");
+
                 case OperationStatus.Failed:
                     ModelState.AddModelError(string.Empty,
                         "No se pudo actualizar la publicación. Inténtelo nuevamente.");
                     break;
 
-                case OperationStatus.ValidationError:
-                case OperationStatus.Conflict:
+                default:
+                    if (!string.IsNullOrWhiteSpace(uploadedImagePath))
+                    {
+                        FileManager.DeleteFile(uploadedImagePath);
+                    }
+
                     foreach (string error in result.Errors)
                     {
                         ModelState.AddModelError(string.Empty, error);
                     }
-                    break;
 
-                default:
-                    return FailurePage(result, "No se pudo actualizar la publicación.");
+                    break;
             }
 
             return ReturnEdit(vm, postId, previousImagePath);
@@ -252,65 +278,209 @@ namespace LinkUpPro.Controllers
 
         public async Task<IActionResult> Delete(int postId)
         {
-            var result = await _postService.GetMyPostByIdAsync(postId, _currentUser.GetRequiredUserId());
+            AppUser? user = await _userManager.GetUserAsync(User);
 
-            if (!result.IsSuccess || result.Data == null)
+            if (user == null)
             {
-                return FailurePage(result, "No se pudo cargar la publicación.");
+                return Challenge();
             }
 
-            DeletePostViewModel vm = new()
+            if (!user.EmailConfirmed)
             {
-                Id = result.Data.Id
-            };
+                return Forbid();
+            }
 
-            return View(vm);
+            var result = await _postService.GetMyPostByIdAsync(postId, user.Id);
+
+            switch (result.Status)
+            {
+                case OperationStatus.Success:
+                    if (result.Data == null)
+                    {
+                        return Problem("No se pudo cargar la publicación.");
+                    }
+
+                    DeletePostViewModel vm = new()
+                    {
+                        Id = result.Data.Id
+                    };
+
+                    return View(vm);
+
+                case OperationStatus.NotFound:
+                    return NotFound();
+
+                case OperationStatus.Forbidden:
+                    return Forbid();
+
+                case OperationStatus.Unauthorized:
+                    return Challenge();
+
+                case OperationStatus.ValidationError:
+                    return BadRequest();
+
+                default:
+                    return Problem("No se pudo cargar la publicación.");
+            }
         }
 
+
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(DeletePostViewModel vm)
         {
             if (!ModelState.IsValid)
             {
-                return ErrorPage("El ID de la publicación es inválido.");
+                return BadRequest(ModelState);
             }
 
-            ServiceResult result = await _postService.DeleteAsync(vm.Id, _currentUser.GetRequiredUserId());
+            AppUser? user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
+
+            ServiceResult result = await _postService.DeleteAsync(vm.Id, user.Id);
 
             switch (result.Status)
             {
                 case OperationStatus.Success:
                     return RedirectToAction("Index", "Home");
 
+                case OperationStatus.NotFound:
+                    return NotFound();
+
+                case OperationStatus.Forbidden:
+                    return Forbid();
+
+                case OperationStatus.Unauthorized:
+                    return Challenge();
+
+                case OperationStatus.ValidationError:
+                    return BadRequest(string.Join(" ", result.Errors));
+
                 case OperationStatus.Failed:
                     ModelState.AddModelError(string.Empty, "No se pudo eliminar la publicación. Inténtelo nuevamente.");
                     break;
 
-                case OperationStatus.ValidationError:
-                case OperationStatus.Conflict:
+                default:
                     foreach (string error in result.Errors)
                     {
                         ModelState.AddModelError(string.Empty, error);
                     }
                     break;
-
-                default:
-                    return FailurePage(result, "No se pudo eliminar la publicación.");
             }
 
-            return View(vm);
+            var postResult = await _postService.GetMyPostByIdAsync(vm.Id, user.Id);
+
+            if (!postResult.IsSuccess || postResult.Data == null)
+            {
+                return Problem("No se pudo cargar la publicación.");
+            }
+
+            PostViewModel postVm = _mapper.Map<PostViewModel>(postResult.Data);
+
+            return View(postVm);
         }
 
-        private async Task<IActionResult> ReturnHomeAsync(CreatePostViewModel vm)
+        private async Task<IActionResult> ReturnHomeAsync(CreatePostViewModel vm, AppUser user)
         {
+            var result = await _postService.GetMyPostsAsync(user.Id);
+
+            if (!result.IsSuccess || result.Data == null)
+            {
+                return Problem("No se pudieron cargar las publicaciones.");
+            }
+
+            List<PostViewModel> posts = _mapper.Map<List<PostViewModel>>(result.Data);
+
+            foreach (PostViewModel post in posts)
+            {
+                post.UserName = user.UserName ?? string.Empty;
+                post.UserProfilePicturePath = user.ProfilePicturePath;
+            }
+
+            if (posts.Count > 0)
+            {
+                var commentsResult = await _commentService.GetCommentsByPostIdsAsync(posts.Select(p => p.Id), user.Id);
+
+                if (!commentsResult.IsSuccess || commentsResult.Data == null)
+                {
+                    return Problem("No se pudieron cargar los comentarios.");
+                }
+
+                foreach (PostViewModel post in posts)
+                {
+                    if (commentsResult.Data.TryGetValue(post.Id, out var comments))
+                    {
+                        post.Comments = _mapper.Map<List<CommentViewModel>>(comments);
+                    }
+                }
+
+                List<CommentViewModel> allComments = [];
+
+                Stack<CommentViewModel> pendingComments = new(posts.SelectMany(p => p.Comments));
+
+                while (pendingComments.Count > 0)
+                {
+                    CommentViewModel comment = pendingComments.Pop();
+
+                    allComments.Add(comment);
+
+                    foreach (CommentViewModel reply in comment.Replies)
+                    {
+                        pendingComments.Push(reply);
+                    }
+                }
+
+                string[] authorIds = allComments
+                    .Where(c => !c.IsDeleted)
+                    .Select(c => c.UserId)
+                    .Distinct()
+                    .ToArray();
+
+                if (authorIds.Length > 0)
+                {
+                    var authors = await _userManager.Users
+                        .AsNoTracking()
+                        .Where(u => authorIds.Contains(u.Id))
+                        .Select(u => new
+                        {
+                            u.Id,
+                            u.UserName,
+                            u.ProfilePicturePath
+                        })
+                        .ToDictionaryAsync(u => u.Id);
+
+                    foreach (CommentViewModel comment in allComments)
+                    {
+                        if (comment.IsDeleted)
+                        {
+                            continue;
+                        }
+
+                        if (authors.TryGetValue(comment.UserId, out var author))
+                        {
+                            comment.UserName = author.UserName ?? string.Empty;
+                            comment.UserProfilePicturePath = author.ProfilePicturePath;
+                        }
+                    }
+                }
+            }
+
             HomeViewModel homeVm = new()
             {
                 CreatePost = vm,
-                Posts = await _feedBuilder.BuildMyPostsAsync()
+                Posts = posts
             };
 
-            ViewData["CurrentUserId"] = _feedBuilder.CurrentUserId;
-            ViewData["FriendIds"] = await _feedBuilder.GetFriendIdsAsync();
+            ViewData["CurrentUserId"] = user.Id;
 
             return View("~/Views/Home/Index.cshtml", homeVm);
         }

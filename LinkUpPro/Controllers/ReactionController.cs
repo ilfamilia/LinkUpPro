@@ -1,44 +1,79 @@
-﻿using LinkUpPro.Core.Application.Interfaces;
+﻿using LinkUpPro.Core.Application.Enums;
+using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.Results;
 using LinkUpPro.Core.Application.ViewModels.Reaction;
+using LinkUpPro.Infrastructure.Identity.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LinkUpPro.Controllers
 {
-    public class ReactionController : SocialController
+
+    [Authorize]
+    public class ReactionController : Controller
     {
         private readonly IReactionService _reactionService;
-        private readonly ICurrentUserService _currentUser;
+        private readonly UserManager<AppUser> _userManager;
 
-        public ReactionController(IReactionService reactionService, ICurrentUserService currentUser)
+        public ReactionController(IReactionService reactionService, UserManager<AppUser> userManager)
         {
             _reactionService = reactionService;
-            _currentUser = currentUser;
+            _userManager = userManager;
         }
 
         [HttpPost]
-        public async Task<IActionResult> Toggle(ToggleReactionViewModel vm)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Toggle(ToggleReactionViewModel vm, string? returnUrl)
         {
+            AppUser? user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
+
             if (!ModelState.IsValid)
             {
-                return ErrorPage("Debe seleccionar una reacción válida.");
+                return BadRequest(ModelState);
             }
 
             ServiceResult result = await _reactionService.ToggleReactionAsync(vm.PostId,
-                _currentUser.GetRequiredUserId(), vm.ReactionType!.Value);
+                user.Id, vm.ReactionType!.Value);
 
-            if (!result.IsSuccess)
+            switch (result.Status)
             {
-                return FailurePage(result, "No se pudo procesar la reacción.");
-            }
+                case OperationStatus.Success:
+                    if (Url.IsLocalUrl(returnUrl))
+                    {
+                        return LocalRedirect(returnUrl!);
+                    }
 
-            // Return to the screen that sent the reaction (Home, Amigos, perfil o detalle).
-            if (!string.IsNullOrWhiteSpace(vm.ReturnUrl) && Url.IsLocalUrl(vm.ReturnUrl))
-            {
-                return LocalRedirect(vm.ReturnUrl);
-            }
+                    return RedirectToAction("Index", "Home");
 
-            return RedirectToAction("Index", "Home");
+                case OperationStatus.ValidationError:
+                    return BadRequest(result.Errors);
+
+                case OperationStatus.NotFound:
+                    return NotFound();
+
+                case OperationStatus.Unauthorized:
+                    return Challenge();
+
+                case OperationStatus.Forbidden:
+                    return Forbid();
+
+                case OperationStatus.Conflict:
+                    return Conflict(result.Errors);
+
+                default:
+                    return Problem("No se pudo procesar la reacción.");
+            }
         }
     }
 }

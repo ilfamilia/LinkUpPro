@@ -4,26 +4,45 @@ using LinkUpPro.Core.Application.Enums;
 using LinkUpPro.Core.Application.Interfaces;
 using LinkUpPro.Core.Application.Results;
 using LinkUpPro.Core.Application.ViewModels.Comment;
+using LinkUpPro.Infrastructure.Identity.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LinkUpPro.Controllers
 {
-    public class CommentController : SocialController
+
+    [Authorize]
+    public class CommentController : Controller
     {
         private readonly ICommentService _commentService;
-        private readonly ICurrentUserService _currentUser;
+        private readonly UserManager<AppUser> _userManager;
         private readonly IMapper _mapper;
 
-        public CommentController(ICommentService commentService, ICurrentUserService currentUser, IMapper mapper)
+        public CommentController(ICommentService commentService,
+            UserManager<AppUser> userManager, IMapper mapper)
         {
             _commentService = commentService;
-            _currentUser = currentUser;
+            _userManager = userManager;
             _mapper = mapper;
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreateCommentViewModel vm)
         {
+            AppUser? user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
+
             if (!ModelState.IsValid)
             {
                 string error = ModelState.Values
@@ -35,7 +54,7 @@ namespace LinkUpPro.Controllers
             }
 
             CreateCommentDto dto = _mapper.Map<CreateCommentDto>(vm);
-            dto.UserId = _currentUser.GetRequiredUserId();
+            dto.UserId = user.Id;
 
             ServiceResult result = await _commentService.AddAsync(dto);
 
@@ -57,32 +76,65 @@ namespace LinkUpPro.Controllers
 
         public async Task<IActionResult> Edit(int commentId, string? returnUrl)
         {
-            var result = await _commentService.GetMyCommentByIdAsync(commentId, _currentUser.GetRequiredUserId());
+            AppUser? user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
+
+            var result = await _commentService.GetMyCommentByIdAsync(commentId, user.Id);
 
             if (!result.IsSuccess || result.Data == null)
             {
-                return FailurePage(result, "No se pudo cargar el comentario.");
+                return result.Status switch
+                {
+                    OperationStatus.NotFound => NotFound(),
+                    OperationStatus.Forbidden => Forbid(),
+                    OperationStatus.Unauthorized => Challenge(),
+                    OperationStatus.ValidationError => BadRequest(result.Errors),
+                    _ => Problem("No se pudo cargar el comentario.")
+                };
             }
 
             UpdateCommentViewModel vm = _mapper.Map<UpdateCommentViewModel>(result.Data);
 
             ViewData["CommentId"] = commentId;
-            ViewData["ReturnUrl"] = SafeReturnUrl(returnUrl);
+            ViewData["ReturnUrl"] = Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Action("Index", "Home");
 
             return View(vm);
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int commentId, UpdateCommentViewModel vm, string? returnUrl)
         {
-            string safeReturnUrl = SafeReturnUrl(returnUrl);
+            AppUser? user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
+
+            string safeReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl!
+                : Url.Action("Index", "Home") ?? "/";
 
             ViewData["CommentId"] = commentId;
             ViewData["ReturnUrl"] = safeReturnUrl;
 
             if (commentId <= 0)
             {
-                return ErrorPage("El ID del comentario es inválido.");
+                return BadRequest("El ID del comentario es inválido");
             }
 
             if (!ModelState.IsValid)
@@ -91,7 +143,7 @@ namespace LinkUpPro.Controllers
             }
 
             UpdateCommentDto dto = _mapper.Map<UpdateCommentDto>(vm);
-            dto.UserId = _currentUser.GetRequiredUserId();
+            dto.UserId = user.Id;
 
             ServiceResult result = await _commentService.UpdateAsync(dto, commentId);
 
@@ -100,6 +152,15 @@ namespace LinkUpPro.Controllers
                 case OperationStatus.Success:
                     return LocalRedirect(safeReturnUrl);
 
+                case OperationStatus.NotFound:
+                    return NotFound();
+
+                case OperationStatus.Unauthorized:
+                    return Challenge();
+
+                case OperationStatus.Forbidden:
+                    return Forbid();
+
                 case OperationStatus.ValidationError:
                 case OperationStatus.Conflict:
                     foreach (string error in result.Errors)
@@ -108,12 +169,10 @@ namespace LinkUpPro.Controllers
                     }
                     break;
 
-                case OperationStatus.Failed:
-                    ModelState.AddModelError(string.Empty, "No se pudo actualizar el comentario");
-                    break;
-
                 default:
-                    return FailurePage(result, "No se pudo actualizar el comentario.");
+                    ModelState.AddModelError(string.Empty,
+                        "No se pudo actualizar el comentario");
+                    break;
             }
 
             return View(vm);
@@ -121,40 +180,81 @@ namespace LinkUpPro.Controllers
 
         public async Task<IActionResult> Delete(int commentId, string? returnUrl)
         {
-            var result = await _commentService.GetMyCommentByIdAsync(commentId, _currentUser.GetRequiredUserId());
+            AppUser? user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
+
+            var result = await _commentService.GetMyCommentByIdAsync(commentId, user.Id);
 
             if (!result.IsSuccess || result.Data == null)
             {
-                return FailurePage(result, "No se pudo cargar el comentario.");
+                return result.Status switch
+                {
+                    OperationStatus.NotFound => NotFound(),
+                    OperationStatus.Forbidden => Forbid(),
+                    OperationStatus.Unauthorized => Challenge(),
+                    OperationStatus.ValidationError => BadRequest(result.Errors),
+                    _ => Problem("No se pudo cargar el comentario.")
+                };
             }
 
             DeleteCommentViewModel vm = new()
             {
                 Id = result.Data.Id,
-                ReturnUrl = SafeReturnUrl(returnUrl)
+                ReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Action("Index", "Home") ?? "/"
             };
 
             return View(vm);
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(DeleteCommentViewModel vm)
         {
-            if (!ModelState.IsValid)
+            AppUser? user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
             {
-                return ErrorPage("El ID del comentario es inválido.");
+                return Challenge();
             }
 
-            string safeReturnUrl = SafeReturnUrl(vm.ReturnUrl);
+            if (!user.EmailConfirmed)
+            {
+                return Forbid();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            string safeReturnUrl = Url.IsLocalUrl(vm.ReturnUrl) ? vm.ReturnUrl! : Url.Action("Index", "Home") ?? "/";
 
             vm.ReturnUrl = safeReturnUrl;
 
-            ServiceResult result = await _commentService.DeleteAsync(vm.Id, _currentUser.GetRequiredUserId());
+            ServiceResult result = await _commentService.DeleteAsync(vm.Id, user.Id);
 
             switch (result.Status)
             {
                 case OperationStatus.Success:
                     return LocalRedirect(safeReturnUrl);
+
+                case OperationStatus.NotFound:
+                    return NotFound();
+
+                case OperationStatus.Unauthorized:
+                    return Challenge();
+
+                case OperationStatus.Forbidden:
+                    return Forbid();
 
                 case OperationStatus.ValidationError:
                 case OperationStatus.Conflict:
@@ -164,20 +264,12 @@ namespace LinkUpPro.Controllers
                     }
                     break;
 
-                case OperationStatus.Failed:
+                default:
                     ModelState.AddModelError(string.Empty, "No se pudo eliminar el comentario");
                     break;
-
-                default:
-                    return FailurePage(result, "No se pudo eliminar el comentario.");
             }
 
             return View(vm);
-        }
-
-        private string SafeReturnUrl(string? returnUrl)
-        {
-            return Url.IsLocalUrl(returnUrl) ? returnUrl! : Url.Action("Index", "Home") ?? "/";
         }
 
         private IActionResult RedirectToOrigin(CreateCommentViewModel vm, string? error = null)
@@ -190,7 +282,7 @@ namespace LinkUpPro.Controllers
                 TempData["CommentContent"] = vm.Content?.Length > 500 ? vm.Content[..500] : vm.Content ?? string.Empty;
             }
 
-            string returnUrl = SafeReturnUrl(vm.ReturnUrl);
+            string returnUrl = Url.IsLocalUrl(vm.ReturnUrl) ? vm.ReturnUrl! : Url.Action("Index", "Home") ?? "/";
 
             returnUrl = returnUrl.Split('#')[0];
 

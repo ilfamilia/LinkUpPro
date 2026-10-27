@@ -1,0 +1,109 @@
+﻿.notification-page {
+    width: 100%;
+    max-width: 840px;
+    margin-inline: auto;
+}
+
+.notification-page__header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.notification-page__subheading {
+    color: var(--linkup-muted, #716B71);
+    font-size: .9375rem;
+}
+
+.notification-card {
+    border-left: 3px solid var(--linkup-border, #DBD9D9);
+}
+
+.notification-card .card-body {
+    padding: 1.25rem 1.5rem;
+}
+
+.notification-unread {
+    border-left-color: var(--linkup-primary, #71505B);
+    background-color: #F8F5F8;
+}
+
+.notification-avatar {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid var(--linkup-border, #DBD9D9);
+}
+
+.notification-card__content {
+    min-width: 0;
+}
+
+.notification-card__user {
+    color: var(--linkup-text, #302830);
+    overflow-wrap: anywhere;
+}
+
+.notification-card__description {
+    margin: .75rem 0 .35rem;
+    overflow-wrap: anywhere;
+}
+
+.notification-card__date {
+    font-size: .8125rem;
+    color: var(--linkup-muted, #716B71);
+}
+
+.notification-card__actions {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.notification-status {
+    display: inline-flex;
+    font-size: .75rem;
+    font-weight: 600;
+    padding: .28rem .55rem;
+    border-radius: .35rem;
+}
+
+.notification-status--type {
+    background: #EEEAF5;
+    color: #544B72;
+}
+
+.notification-status--unread {
+    background: #71505B;
+    color: #fff;
+}
+
+.notification-status--read {
+    background: #E7DFE2;
+    color: #51414A;
+}
+
+.notification-empty-state {
+    background: #fff;
+    border: 1px dashed var(--linkup-border, #DBD9D9);
+    border-radius: .65rem;
+    color: var(--linkup-muted, #716B71);
+    padding: 2rem 1.5rem;
+    text-align: center;
+}
+
+@media (max-width: 575.98px) {
+    .notification-card .card-body {
+        padding: 1.125rem;
+    }
+
+    .notification-avatar {
+        width: 40px;
+        height: 40px;
+    }
+}

@@ -1,4 +1,5 @@
-﻿using LinkUpPro.Infrastructure.Identity.Entities;
+﻿
+using LinkUpPro.Infrastructure.Identity.Entities;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;

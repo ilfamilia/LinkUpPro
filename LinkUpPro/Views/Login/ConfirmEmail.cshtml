@@ -1,0 +1,12 @@
+﻿@model string
+@{
+    ViewData["Title"] = "Confirmar correo";
+}
+
+<div class="card auth-card">
+    <div class="card-body text-center">
+        <h1 class="auth-title">Confirmación de correo</h1>
+        <div class="alert alert-info my-4" role="status">@Model</div>
+        <a class="btn btn-primary w-100" asp-controller="Login" asp-action="Index">Ir a iniciar sesión</a>
+    </div>
+</div>

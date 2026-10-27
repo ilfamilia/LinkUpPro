@@ -5,66 +5,73 @@
     ViewData["Title"] = "Editar publicación";
 }
 
-<div class="container mt-4">
-    <h2 class="mb-4">Editar publicación</h2>
-    <div class="card">
+@section Styles {
+    <link rel="stylesheet" href="~/css/Post/Posts.css" asp-append-version="true" />
+}
+
+<div class="post-form-page">
+    <header class="mb-4">
+        <h1 class="mb-1">Editar publicación</h1>
+        <p class="text-muted mb-0">Actualiza el contenido y la configuración de tu publicación.</p>
+    </header>
+    <div class="card post-form-card">
         <div class="card-body">
-            <form asp-controller="Post" asp-action="Edit" asp-route-postId="@ViewData["PostId"]" method="post" enctype="multipart/form-data">
+            <form asp-controller="Post" asp-action="Edit" asp-route-postId="@ViewData["PostId"]"
+                  method="post" enctype="multipart/form-data">
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
                 <div class="mb-3">
                     <label asp-for="Content" class="form-label">Contenido</label>
-                    <textarea asp-for="Content" class="form-control" rows="4"></textarea>
-                    <span asp-validation-for="Content" class="text-danger"></span>
+                    <textarea asp-for="Content" class="form-control" rows="4" maxlength="1000"></textarea>
+                    <span asp-validation-for="Content" class="text-danger small"></span>
                 </div>
-                <div class="mb-3">
-                    <label asp-for="MediaType" class="form-label">Tipo de publicación</label>
-                    <select asp-for="MediaType" class="form-select" data-image-value="@((int)PostMediaType.Image)" data-video-value="@((int)PostMediaType.YouTubeVideo)">
-                        <option value="">Seleccione un tipo</option>
-                        <option value="@((int)PostMediaType.Image)">Imagen</option>
-                        <option value="@((int)PostMediaType.YouTubeVideo)">Video de YouTube</option>
-                    </select>
-                    <span asp-validation-for="MediaType" class="text-danger"></span>
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-sm-6">
+                        <label asp-for="MediaType" class="form-label">Tipo de publicación</label>
+                        <select asp-for="MediaType" class="form-select"
+                                data-image-value="@((int)PostMediaType.Image)"
+                                data-video-value="@((int)PostMediaType.YouTubeVideo)">
+                            <option value="">Seleccione un tipo</option>
+                            <option value="@((int)PostMediaType.Image)">Imagen</option>
+                            <option value="@((int)PostMediaType.YouTubeVideo)">Video de YouTube</option>
+                        </select>
+                        <span asp-validation-for="MediaType" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <label asp-for="Privacy" class="form-label">Privacidad</label>
+                        <select asp-for="Privacy" class="form-select">
+                            <option value="@((int)PostPrivacy.FriendsOnly)">Solo amigos</option>
+                            <option value="@((int)PostPrivacy.OnlyMe)">Solo yo</option>
+                        </select>
+                        <span asp-validation-for="Privacy" class="text-danger small"></span>
+                    </div>
                 </div>
                 <div id="imageSection" class="mb-3 d-none">
                     @if (!string.IsNullOrWhiteSpace(Model.CurrentImagePath))
                     {
                         <div class="mb-3">
                             <label class="form-label">Imagen actual</label>
-                            <div>
+                            <div class="post-form-card__image">
                                 <img src="@Url.Content($"~/{Model.CurrentImagePath}")"
-                                     alt="Imagen actual de la publicación"
-                                     class="img-thumbnail img-fluid" />
+                                     alt="Imagen actual de la publicación" class="img-fluid" />
                             </div>
                         </div>
                     }
                     <label asp-for="ImageFile" class="form-label">Nueva imagen</label>
                     <input asp-for="ImageFile" class="form-control" accept=".jpg,.jpeg,.png,.webp" />
-                    <span asp-validation-for="ImageFile" class="text-danger"></span>
-                    <div class="form-text">
-                        Si no selecciona una nueva imagen, se conservará la actual.
-                    </div>
+                    <span asp-validation-for="ImageFile" class="text-danger small"></span>
+                    <div class="form-text">Si no selecciona una nueva imagen, se conservará la actual. Máximo 5 MB.</div>
                 </div>
                 <div id="videoSection" class="mb-3 d-none">
                     <label asp-for="YouTubeUrl" class="form-label">Enlace de YouTube</label>
                     <input asp-for="YouTubeUrl" class="form-control" />
-                    <span asp-validation-for="YouTubeUrl" class="text-danger"></span>
+                    <span asp-validation-for="YouTubeUrl" class="text-danger small"></span>
                 </div>
-                <div class="mb-3">
-                    <label asp-for="Privacy" class="form-label">Privacidad</label>
-                    <select asp-for="Privacy" class="form-select">
-                        <option value="@((int)PostPrivacy.FriendsOnly)">Solo amigos</option>
-                        <option value="@((int)PostPrivacy.OnlyMe)">Solo yo</option>
-                    </select>
-                    <span asp-validation-for="Privacy" class="text-danger"></span>
-                </div>
-                <div class="form-check mb-3">
+                <div class="form-check mb-4">
                     <input asp-for="AllowComments" class="form-check-input" />
-                    <label asp-for="AllowComments" class="form-check-label">
-                        Permitir comentarios
-                    </label>
+                    <label asp-for="AllowComments" class="form-check-label">Permitir comentarios</label>
                 </div>
-                <div class="d-flex gap-2">
-                    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Volver atrás</a>
+                <div class="d-flex flex-wrap gap-2">
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Volver atrás</a>
                     <button type="submit" class="btn btn-primary">Guardar cambios</button>
                 </div>
             </form>

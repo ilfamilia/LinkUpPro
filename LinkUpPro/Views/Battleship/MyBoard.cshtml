@@ -1,0 +1,80 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Battleship.BattleshipOwnBoardViewModel
+
+@{
+    ViewData["Title"] = "Mis barcos";
+    var occupied = Model.OccupiedCells.Select(c => (c.Row, c.Column)).ToHashSet();
+    var received = Model.ReceivedAttacks.ToDictionary(a => (a.Row, a.Column));
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Battleship/Attack.css" asp-append-version="true" />
+}
+
+<div class="container battleship-page battleship-page--wide mt-4 mb-5">
+    <div class="battleship-page-header d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">Mis barcos — Partida #@Model.GameId</h1>
+        <div class="d-flex flex-wrap gap-2">
+            @if (Model.Status == LinkUpPro.Core.Domain.Enums.BattleshipGameStatus.SettingUp)
+            {
+                <a asp-action="Setup" asp-route-gameId="@Model.GameId"
+                   class="btn btn-outline-primary">Volver a la colocación</a>
+            }
+            else
+            {
+                <a asp-action="AttackBoard" asp-route-gameId="@Model.GameId"
+                   class="btn btn-outline-primary">Tablero de ataque</a>
+            }
+            <a asp-action="Index" class="btn btn-outline-secondary">Volver atrás</a>
+        </div>
+    </div>
+
+    <div class="battleship-legend" aria-label="Leyenda del tablero">
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--ship"></span> Mis barcos</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--hit"></span> Impacto recibido</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--miss"></span> Fallo recibido</span>
+    </div>
+
+    <p class="small text-muted d-sm-none mb-2">Si no ves todas las casillas, desliza el tablero horizontalmente.</p>
+    <div class="battleship-scroll battleship-grid-wrap" tabindex="0" aria-label="Tablero propio; desplázate horizontalmente si es necesario">
+        <table class="table table-bordered battleship-grid" aria-label="Tablero propio de doce por doce">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    @for (int col = 0; col < 12; col++)
+                    {
+                        <th scope="col">@((char)('A' + col))</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @for (int row = 0; row < 12; row++)
+                {
+                    <tr>
+                        <th scope="row">@(row + 1)</th>
+                        @for (int col = 0; col < 12; col++)
+                        {
+                            <td>
+                                @if (received.TryGetValue((row, col), out var attack))
+                                {
+                                    <span class="battleship-cell @(attack.IsHit ? "battleship-hit" : "battleship-miss")"
+                                          title="@(attack.IsHit ? "Impacto recibido" : "Fallo recibido")">
+                                        @(attack.IsHit ? "✕" : "•")
+                                    </span>
+                                }
+                                else if (occupied.Contains((row, col)))
+                                {
+                                    <span class="battleship-cell battleship-ship" title="Mi barco">■</span>
+                                }
+                                else
+                                {
+                                    <span class="battleship-cell battleship-unavailable">·</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

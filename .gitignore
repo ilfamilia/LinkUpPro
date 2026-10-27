@@ -421,5 +421,3 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
-# Local development mailbox (MailSettings:PickupDirectory)
-LinkUpPro/App_Data/

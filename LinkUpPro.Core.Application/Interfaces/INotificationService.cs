@@ -1,23 +1,18 @@
-using LinkUpPro.Core.Application.Dtos.Social;
+﻿using LinkUpPro.Core.Application.Dtos.Notification;
+using LinkUpPro.Core.Application.Results;
+using LinkUpPro.Core.Domain.Enums;
 
-namespace LinkUpPro.Core.Application.Interfaces;
-
-/// <summary>Persists interaction notifications and limits reading or updating to their recipient.</summary>
-public interface INotificationService
+namespace LinkUpPro.Core.Application.Interfaces
 {
-    /// <summary>Lists notifications belonging only to the current recipient.</summary>
-    Task<List<NotificationDto>> GetAllAsync();
-    /// <summary>Counts unread notifications for the current recipient.</summary>
-    Task<int> GetUnreadCountAsync();
-    /// <summary>Marks one owned notification as read.</summary>
-    Task MarkReadAsync(int notificationId);
-    /// <summary>Marks all owned unread notifications as read.</summary>
-    Task MarkAllReadAsync();
-    /// <summary>Rechecks target existence and permission before returning navigation identifiers.</summary>
-    Task<(int PostId, int? CommentId)> GetContentAsync(int notificationId);
-    // Call these operations from the interaction services after the interaction has been persisted.
-    /// <summary>Notifies the correct author of a persisted comment or reply.</summary>
-    Task NotifyCommentAsync(int commentId);
-    /// <summary>Notifies the post author after a persisted reaction registration or change.</summary>
-    Task NotifyReactionAsync(int postId);
+    public interface INotificationService
+    {
+        Task<ServiceResult> CreateForCommentAsync(int commentId);
+        Task<ServiceResult> CreateForReactionAsync(int postId, string actorUserId,
+            ReactionType reactionType, bool isChange);
+
+        Task<ServiceResultWithData<List<NotificationDto>>> GetMineAsync(string recipientUserId);
+        Task<ServiceResultWithData<int>> GetUnreadCountAsync(string recipientUserId);
+        Task<ServiceResult> MarkAsReadAsync(int notificationId, string recipientUserId);
+        Task<ServiceResult> MarkAllAsReadAsync(string recipientUserId);
+    }
 }

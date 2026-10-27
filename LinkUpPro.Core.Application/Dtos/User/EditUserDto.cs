@@ -6,9 +6,10 @@ namespace LinkUpPro.Core.Application.Dtos.User
         public required string Name { get; set; }
         public required string LastName { get; set; }
         public required string Phone { get; set; }
-        // New stored photo path; null keeps the current photo.
         public string? ProfileImage { get; set; }
         public string? CurrentPassword { get; set; }
         public string? NewPassword { get; set; }
+
+        public string? ConfirmPassword { get; set; }
     }
 }

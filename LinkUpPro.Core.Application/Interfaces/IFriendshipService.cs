@@ -1,22 +1,18 @@
-using LinkUpPro.Core.Application.Dtos.Social;
+﻿using LinkUpPro.Core.Application.Dtos.Friendship;
+using LinkUpPro.Core.Application.Results;
 
-namespace LinkUpPro.Core.Application.Interfaces;
-
-/// <summary>Manages current friendships and exposes authorization checks to other modules.</summary>
-public interface IFriendshipService
+namespace LinkUpPro.Core.Application.Interfaces
 {
-    /// <summary>Checks the current relationship and activation of both accounts.</summary>
-    Task<bool> AreFriendsAsync(string firstUserId, string secondUserId);
-    /// <summary>Returns active friend identifiers for internal authorization checks.</summary>
-    Task<List<string>> GetActiveFriendIdsAsync(string userId);
-    /// <summary>Lists and searches the caller's friends and mutual-friend counts.</summary>
-    Task<List<FriendDto>> GetFriendsAsync(string? search = null);
-    /// <summary>Reads a profile only while an active friendship grants access.</summary>
-    Task<UserSummaryDto> GetFriendProfileAsync(string userId);
-    /// <summary>Lists active friends shared by the caller and the selected user.</summary>
-    Task<List<UserSummaryDto>> GetMutualFriendsAsync(string otherUserId);
-    /// <summary>Logically removes a friendship without deleting historical records.</summary>
-    Task RemoveAsync(string otherUserId);
-    /// <summary>Filters publications only after applying friendship and privacy rules.</summary>
-    Task<List<FriendPostDto>> GetFriendPostsAsync(FriendPostFilterDto filter);
+    public interface IFriendshipService
+    {
+        Task<ServiceResultWithData<List<FriendDto>>> GetFriendsAsync(string currentUserId, string? searchText = null);
+
+        Task<ServiceResultWithData<FriendDto>> GetFriendAsync(string currentUserId, string friendUserId);
+
+        Task<ServiceResultWithData<List<FriendDto>>> GetMutualFriendsAsync(string currentUserId, string friendUserId);
+
+        Task<ServiceResultWithData<FriendshipSummaryDto>> GetSummaryAsync(string currentUserId);
+
+        Task<ServiceResult> RemoveAsync(string currentUserId, string friendUserId);
+    }
 }

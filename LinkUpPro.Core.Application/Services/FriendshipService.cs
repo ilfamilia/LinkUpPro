@@ -1,132 +1,293 @@
-using AutoMapper;
-using LinkUpPro.Core.Application.Dtos.Social;
+﻿using LinkUpPro.Core.Application.Dtos.Friendship;
+using LinkUpPro.Core.Application.Dtos.User;
+using LinkUpPro.Core.Application.Enums;
 using LinkUpPro.Core.Application.Interfaces;
+using LinkUpPro.Core.Application.Results;
 using LinkUpPro.Core.Domain.Entities;
 using LinkUpPro.Core.Domain.Enums;
-using LinkUpPro.Core.Domain.Exceptions;
 using LinkUpPro.Core.Domain.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
-namespace LinkUpPro.Core.Application.Services;
-
-/// <summary>Owns friendship visibility, mutual-friend calculations, and logical removal.</summary>
-public sealed class FriendshipService(
-    IFriendshipRepository friendships, IPostRepository posts, IReactionRepository reactions,
-    IUserDirectoryService users, SocialUserGuard guard, IAtomicOperation atomic, IMapper mapper)
-    : IFriendshipService
+namespace LinkUpPro.Core.Application.Services
 {
-    /// <summary>Checks the current relationship and both account activation states.</summary>
-    public async Task<bool> AreFriendsAsync(string firstUserId, string secondUserId)
+    public class FriendshipService : BaseService, IFriendshipService
     {
-        var target = await users.GetByIdAsync(secondUserId);
-        return target?.IsActive == true && (await GetActiveFriendIdsAsync(firstUserId)).Contains(target.Id);
-    }
+        private readonly IFriendshipRepository _friendshipRepository;
+        private readonly IPostRepository _postRepository;
+        private readonly IUserAccountStatusService _userAccountStatusService;
+        private readonly IAccountServiceForWebApp _accountServiceForWebApp;
 
-    /// <summary>Returns only friends whose relationship and account remain active.</summary>
-    public async Task<List<string>> GetActiveFriendIdsAsync(string userId)
-    {
-        var source = await users.GetByIdAsync(userId);
-        if (source is null || !source.IsActive) return [];
-        userId = source.Id; // Use the canonical Identity value when comparing identifiers in memory.
-        var relations = await friendships.GetListAsync(f => f.Status == FriendshipStatus.Active
-            && (f.User1Id == userId || f.User2Id == userId));
-        var ids = relations.Select(f => f.User1Id == userId ? f.User2Id : f.User1Id).Distinct().ToList();
-        return (await users.GetByIdsAsync(ids)).Where(u => u.IsActive).Select(u => u.Id).ToList();
-    }
-
-    /// <summary>Lists the caller's active friends in alphabetical order with optional partial searching.</summary>
-    public async Task<List<FriendDto>> GetFriendsAsync(string? search = null)
-    {
-        var current = await guard.GetCurrentAsync();
-        var ids = await GetActiveFriendIdsAsync(current.Id);
-        var profiles = await users.GetByIdsAsync(ids);
-        var term = search?.Trim() ?? "";
-        var result = new List<FriendDto>();
-        foreach (var user in profiles.Where(u => u.IsActive && (term.Length == 0
-            || u.FirstName.Contains(term, StringComparison.OrdinalIgnoreCase)
-            || u.LastName.Contains(term, StringComparison.OrdinalIgnoreCase)
-            || u.UserName.Contains(term, StringComparison.OrdinalIgnoreCase)))
-            .OrderBy(u => u.FirstName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(u => u.LastName, StringComparer.OrdinalIgnoreCase))
-            result.Add(new() { User = user, MutualFriendCount = (await GetMutualFriendsAsync(user.Id)).Count });
-        return result;
-    }
-
-    /// <summary>Authorizes a friend profile separately from the visibility of a comment author.</summary>
-    public async Task<UserSummaryDto> GetFriendProfileAsync(string userId)
-    {
-        var current = await guard.GetCurrentAsync();
-        var target = await guard.GetActiveAsync(userId);
-        userId = target.Id;
-        if (!await AreFriendsAsync(current.Id, userId))
-            throw new DomainRuleException("No posee permisos para visualizar el perfil de este usuario.");
-        return target;
-    }
-
-    /// <summary>Returns the caller's own friends who are also active friends of the selected user.</summary>
-    public async Task<List<UserSummaryDto>> GetMutualFriendsAsync(string otherUserId)
-    {
-        var current = await guard.GetCurrentAsync();
-        otherUserId = (await guard.GetActiveAsync(otherUserId)).Id;
-        var first = await GetActiveFriendIdsAsync(current.Id);
-        var second = await GetActiveFriendIdsAsync(otherUserId);
-        var common = first.Intersect(second).Where(id => id != current.Id && id != otherUserId);
-        return (await users.GetByIdsAsync(common)).Where(u => u.IsActive)
-            .OrderBy(u => u.FirstName).ThenBy(u => u.LastName).ToList();
-    }
-
-    /// <summary>Logically removes a friendship while preserving requests, interactions, and games.</summary>
-    public Task RemoveAsync(string otherUserId) => atomic.ExecuteAsync(async () =>
-    {
-        var current = await guard.GetCurrentAsync();
-        otherUserId = (await guard.GetActiveAsync(otherUserId)).Id;
-        var pair = OrderPair(current.Id, otherUserId);
-        var friendship = await friendships.GetByIdAsync(pair.First, pair.Second);
-        if (friendship is null || friendship.Status != FriendshipStatus.Active)
-            throw new DomainRuleException("La amistad seleccionada ya no se encuentra disponible.");
-        friendship.Status = FriendshipStatus.Removed;
-        return true;
-    });
-
-    /// <summary>Reads visible friend posts with combinable filters and inclusive UTC calendar dates.</summary>
-    public async Task<List<FriendPostDto>> GetFriendPostsAsync(FriendPostFilterDto filter)
-    {
-        var current = await guard.GetCurrentAsync();
-        if (filter.From?.Date > filter.Until?.Date)
-            throw new DomainRuleException("La fecha inicial no puede ser posterior a la fecha final.");
-        if (filter.MediaType.HasValue && !Enum.IsDefined(filter.MediaType.Value))
-            throw new DomainRuleException("El tipo de contenido no es válido.");
-        var ids = await GetActiveFriendIdsAsync(current.Id);
-        if (!string.IsNullOrEmpty(filter.FriendId))
+        public FriendshipService(
+            IFriendshipRepository friendshipRepository,
+            IPostRepository postRepository,
+            IUserAccountStatusService userAccountStatusService,
+            IAccountServiceForWebApp accountServiceForWebApp)
         {
-            filter.FriendId = (await guard.GetActiveAsync(filter.FriendId)).Id;
-            if (!ids.Contains(filter.FriendId))
-                throw new DomainRuleException("El usuario seleccionado ya no forma parte de su lista de amigos.");
-            ids = [filter.FriendId];
+            _friendshipRepository = friendshipRepository;
+            _postRepository = postRepository;
+            _userAccountStatusService = userAccountStatusService;
+            _accountServiceForWebApp = accountServiceForWebApp;
         }
-        var term = filter.Search?.Trim().ToUpperInvariant() ?? "";
-        var from = filter.From?.Date;
-        var until = filter.Until?.Date;
-        var entities = await posts.GetListAsync(p => ids.Contains(p.UserId) && !p.IsDeleted
-            && p.Privacy == PostPrivacy.FriendsOnly
-            && (term == "" || p.Content.ToUpper().Contains(term))
-            && (!filter.MediaType.HasValue || p.MediaType == filter.MediaType)
-            && (!from.HasValue || p.CreatedAt >= from)
-            && (!until.HasValue || p.CreatedAt.Date <= until)
-            && (!filter.IsEdited.HasValue || (p.UpdatedAt != null) == filter.IsEdited));
-        var authors = (await users.GetByIdsAsync(ids)).ToDictionary(u => u.Id);
-        var postIds = entities.Select(p => p.Id).ToList();
-        var allReactions = await reactions.GetListAsync(r => postIds.Contains(r.PostId));
-        return entities.OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id).Select(p =>
-        {
-            var dto = mapper.Map<FriendPostDto>(p);
-            dto.Author = authors[p.UserId];
-            dto.LikeCount = allReactions.Count(r => r.PostId == p.Id && r.Type == ReactionType.Like);
-            dto.DislikeCount = allReactions.Count(r => r.PostId == p.Id && r.Type == ReactionType.Dislike);
-            return dto;
-        }).ToList();
-    }
 
-    /// <summary>Normalizes user identifiers consistently with the binary SQL pair constraint.</summary>
-    public static (string First, string Second) OrderPair(string first, string second)
-        => string.CompareOrdinal(first, second) < 0 ? (first, second) : (second, first);
+        public async Task<ServiceResultWithData<List<FriendDto>>> GetFriendsAsync(string currentUserId, string? searchText = null)
+        {
+            return await ExecuteAsync<List<FriendDto>>(async () =>
+            {
+                ServiceResultWithData<List<FriendDto>>? failure =
+                    await ValidateReaderAsync<List<FriendDto>>(currentUserId);
+                if (failure != null) return failure;
+
+                FriendNetwork network = await GetFriendNetworkAsync(currentUserId);
+                IEnumerable<FriendDto> friends = network.FriendIds
+                    .Select(id => CreateFriendDto(
+                        network.ActiveUsers[id],
+                        GetMutualCount(network, currentUserId, id)));
+
+                if (!string.IsNullOrWhiteSpace(searchText))
+                {
+                    string term = searchText.Trim();
+                    friends = friends.Where(friend =>
+                        friend.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                        friend.LastName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                        friend.UserName.Contains(term, StringComparison.OrdinalIgnoreCase));
+                }
+
+                return ServiceResultWithData<List<FriendDto>>.Success(SortFriends(friends));
+            });
+        }
+
+        public async Task<ServiceResultWithData<FriendDto>> GetFriendAsync(string currentUserId, string friendUserId)
+        {
+            return await ExecuteAsync<FriendDto>(async () =>
+            {
+                ServiceResultWithData<FriendDto>? failure =
+                    await ValidateReaderAsync<FriendDto>(currentUserId);
+                if (failure != null) return failure;
+
+                if (string.IsNullOrWhiteSpace(friendUserId) || currentUserId == friendUserId)
+                {
+                    return ServiceResultWithData<FriendDto>.Failure(
+                        OperationStatus.ValidationError, "Debe seleccionar un amigo válido.");
+                }
+
+                FriendNetwork network = await GetFriendNetworkAsync(currentUserId);
+                if (!network.FriendIds.Contains(friendUserId))
+                {
+                    return ServiceResultWithData<FriendDto>.Failure(
+                        OperationStatus.Forbidden,
+                        "No posee permisos para visualizar el perfil de este usuario.");
+                }
+
+                FriendDto friend = CreateFriendDto(network.ActiveUsers[friendUserId],
+                    GetMutualCount(network, currentUserId, friendUserId));
+                return ServiceResultWithData<FriendDto>.Success(friend);
+            });
+        }
+
+        public async Task<ServiceResultWithData<List<FriendDto>>> GetMutualFriendsAsync(string currentUserId, string friendUserId)
+        {
+            return await ExecuteAsync<List<FriendDto>>(async () =>
+            {
+                ServiceResultWithData<List<FriendDto>>? failure =
+                    await ValidateReaderAsync<List<FriendDto>>(currentUserId);
+                if (failure != null) return failure;
+
+                if (string.IsNullOrWhiteSpace(friendUserId) || currentUserId == friendUserId)
+                {
+                    return ServiceResultWithData<List<FriendDto>>.Failure(OperationStatus.ValidationError, "Debe seleccionar un amigo válido.");
+                }
+
+                FriendNetwork network = await GetFriendNetworkAsync(currentUserId);
+                if (!network.FriendIds.Contains(friendUserId))
+                {
+                    return ServiceResultWithData<List<FriendDto>>.Failure(OperationStatus.Forbidden,
+                        "No posee permisos para consultar los amigos en común de este usuario.");
+                }
+
+                HashSet<string> friendConnections = GetConnections(network, friendUserId);
+                List<FriendDto> mutualFriends = SortFriends(network.FriendIds
+                    .Where(id => id != currentUserId && id != friendUserId &&
+                                 friendConnections.Contains(id))
+                    .Select(id => CreateFriendDto(network.ActiveUsers[id],
+                        GetMutualCount(network, currentUserId, id))));
+
+                return ServiceResultWithData<List<FriendDto>>.Success(mutualFriends);
+            });
+        }
+
+        public async Task<ServiceResultWithData<FriendshipSummaryDto>> GetSummaryAsync(string currentUserId)
+        {
+            return await ExecuteAsync<FriendshipSummaryDto>(async () =>
+            {
+                ServiceResultWithData<FriendshipSummaryDto>? failure =
+                    await ValidateReaderAsync<FriendshipSummaryDto>(currentUserId);
+                if (failure != null) return failure;
+
+                FriendNetwork network = await GetFriendNetworkAsync(currentUserId);
+                int availablePosts = 0;
+
+                if (network.FriendIds.Count > 0)
+                {
+                    string[] friendIds = network.FriendIds.ToArray();
+                    availablePosts = await _postRepository.GetAllQuery()
+                        .AsNoTracking()
+                        .CountAsync(post => !post.IsDeleted &&
+                            post.Privacy == PostPrivacy.FriendsOnly &&
+                            friendIds.Contains(post.UserId));
+                }
+
+                return ServiceResultWithData<FriendshipSummaryDto>.Success(
+                    new FriendshipSummaryDto
+                    {
+                        TotalFriends = network.FriendIds.Count,
+                        AvailablePosts = availablePosts
+                    });
+            });
+        }
+
+        public async Task<ServiceResult> RemoveAsync(string currentUserId, string friendUserId)
+        {
+            return await ExecuteAsync(async () =>
+            {
+                if (string.IsNullOrWhiteSpace(currentUserId))
+                {
+                    return ServiceResult.Failure(OperationStatus.Unauthorized,
+                        "El usuario no está autenticado.");
+                }
+
+                if (string.IsNullOrWhiteSpace(friendUserId) || currentUserId == friendUserId)
+                {
+                    return ServiceResult.Failure(OperationStatus.ValidationError,
+                        "Debe seleccionar un amigo válido.");
+                }
+
+                HashSet<string> activeIds = await _userAccountStatusService.GetActiveUserIdsAsync(
+                    [currentUserId, friendUserId]);
+                if (!activeIds.Contains(currentUserId) || !activeIds.Contains(friendUserId))
+                {
+                    return ServiceResult.Failure(OperationStatus.Forbidden,
+                        "No se puede eliminar la amistad porque una de las cuentas está inactiva.");
+                }
+
+                int changed = await _friendshipRepository.GetAllQuery()
+                    .Where(friendship => friendship.Status == FriendshipStatus.Active &&
+                        ((friendship.User1Id == currentUserId && friendship.User2Id == friendUserId) ||
+                         (friendship.User2Id == currentUserId && friendship.User1Id == friendUserId)))
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(friendship => friendship.Status, FriendshipStatus.Removed));
+
+                if (changed != 1)
+                {
+                    return ServiceResult.Failure(OperationStatus.NotFound,
+                        "La amistad seleccionada ya no se encuentra disponible.");
+                }
+
+                return ServiceResult.Success();
+            });
+        }
+
+        private async Task<ServiceResultWithData<T>?> ValidateReaderAsync<T>(string currentUserId)
+        {
+            if (string.IsNullOrWhiteSpace(currentUserId))
+            {
+                return ServiceResultWithData<T>.Failure(OperationStatus.Unauthorized,
+                    "El usuario no está autenticado.");
+            }
+
+            if (!await _userAccountStatusService.IsUserActiveAsync(currentUserId))
+            {
+                return ServiceResultWithData<T>.Failure(OperationStatus.Forbidden,
+                    "La cuenta del usuario se encuentra inactiva.");
+            }
+
+            return null;
+        }
+
+        private async Task<FriendNetwork> GetFriendNetworkAsync(string currentUserId)
+        {
+            Dictionary<string, UserDto> activeUsers = (await _accountServiceForWebApp
+                .GetAllUserAsync(true))
+                .ToDictionary(user => user.Id, StringComparer.Ordinal);
+
+            List<Friendship> currentRelationships = await _friendshipRepository.GetAllQuery()
+                .AsNoTracking()
+                .Where(friendship => friendship.Status == FriendshipStatus.Active &&
+                    (friendship.User1Id == currentUserId || friendship.User2Id == currentUserId))
+                .ToListAsync();
+
+            HashSet<string> friendIds = currentRelationships
+                .Select(friendship => friendship.User1Id == currentUserId
+                    ? friendship.User2Id : friendship.User1Id)
+                .Where(activeUsers.ContainsKey)
+                .ToHashSet(StringComparer.Ordinal);
+
+            Dictionary<string, HashSet<string>> connections = new(StringComparer.Ordinal);
+            if (friendIds.Count > 0)
+            {
+                string[] candidates = friendIds.Append(currentUserId).ToArray();
+                List<Friendship> related = await _friendshipRepository.GetAllQuery()
+                    .AsNoTracking()
+                    .Where(friendship => friendship.Status == FriendshipStatus.Active &&
+                        (candidates.Contains(friendship.User1Id) ||
+                         candidates.Contains(friendship.User2Id)))
+                    .ToListAsync();
+
+                foreach (Friendship friendship in related)
+                {
+                    if (!activeUsers.ContainsKey(friendship.User1Id) ||
+                        !activeUsers.ContainsKey(friendship.User2Id)) continue;
+
+                    if (!connections.TryGetValue(friendship.User1Id, out HashSet<string>? first))
+                        connections[friendship.User1Id] = first = new HashSet<string>(StringComparer.Ordinal);
+                    first.Add(friendship.User2Id);
+
+                    if (!connections.TryGetValue(friendship.User2Id, out HashSet<string>? second))
+                        connections[friendship.User2Id] = second = new HashSet<string>(StringComparer.Ordinal);
+                    second.Add(friendship.User1Id);
+                }
+            }
+
+            return new FriendNetwork(activeUsers, friendIds, connections);
+        }
+
+        private static HashSet<string> GetConnections(FriendNetwork network, string userId)
+        {
+            return network.Connections.TryGetValue(userId, out HashSet<string>? friends)
+                ? friends : new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        private static int GetMutualCount(FriendNetwork network, string currentUserId, string friendUserId)
+        {
+            HashSet<string> otherFriends = GetConnections(network, friendUserId);
+            return network.FriendIds.Count(id => id != currentUserId &&
+                                                 id != friendUserId &&
+                                                 otherFriends.Contains(id));
+        }
+
+        private static FriendDto CreateFriendDto(UserDto user, int mutualCount)
+        {
+            return new FriendDto
+            {
+                Id = user.Id,
+                Name = user.Name,
+                LastName = user.LastName,
+                UserName = user.UserName,
+                ProfileImage = user.ProfileImage,
+                MutualFriendsCount = mutualCount
+            };
+        }
+
+        private static List<FriendDto> SortFriends(IEnumerable<FriendDto> friends)
+        {
+            return friends.OrderBy(friend => friend.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(friend => friend.LastName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(friend => friend.UserName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private sealed record FriendNetwork(
+            Dictionary<string, UserDto> ActiveUsers,
+            HashSet<string> FriendIds,
+            Dictionary<string, HashSet<string>> Connections);
+    }
 }

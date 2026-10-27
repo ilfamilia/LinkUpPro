@@ -1,0 +1,35 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Friendship.FriendshipMutualFriendsViewModel
+
+@{
+    ViewData["Title"] = "Amigos en común";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Friendship/Index.css" asp-append-version="true" />
+}
+
+<div class="friend-page my-4">
+    <header class="friend-page__intro">
+        <h1>Amigos en común</h1>
+        <p class="text-muted mb-0">Amistades que compartes con @Model.Friend.UserName.</p>
+    </header>
+
+    @if (Model.MutualFriends.Count == 0)
+    {
+        <div class="friend-empty-state" role="status"><p>No tienen amigos en común.</p></div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var friend in Model.MutualFriends)
+            {
+                <div class="col-12 col-md-6 col-xl-4">
+                    <partial name="_FriendCard" model="friend" />
+                </div>
+            }
+        </div>
+    }
+
+    <a asp-action="Profile" asp-route-friendUserId="@Model.Friend.Id"
+       class="btn btn-outline-secondary mt-4">Volver al perfil</a>
+</div>

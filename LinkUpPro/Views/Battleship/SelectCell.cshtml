@@ -1,45 +1,51 @@
-@model GameDetailsViewModel
-@* Allows navigation from free starting cells and makes already occupied cells noninteractive. *@
+﻿@model LinkUpPro.Core.Application.ViewModels.Battleship.BattleshipSelectCellViewModel
 @{
-    ViewData["Title"] = "Seleccionar celda";
-    var sizes = new[] { 2, 3, 3, 4, 5 };
-    var board = BoardViewModel.Create("Mi tablero", Model.Id, Model.Version, (row, column) =>
-        Model.OwnShipCells.Any(c => c.Row == row && c.Column == column)
-            ? (BoardCellState.Ship, BoardCellMode.None, null)
-            : (BoardCellState.Water, BoardCellMode.Link,
-                Url.Action("Direction", "Battleship", new { id = Model.Id, shipNumber = Model.SelectedShipNumber, row, column })));
+    ViewData["Title"] = "Seleccionar casilla";
+    HashSet<(int, int)> occupied = Model.Placement.OccupiedCells
+        .Select(cell => (cell.Row, cell.Column)).ToHashSet();
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Battleship/Setup.css" asp-append-version="true" />
 }
 
-@section Styles
-{
-    <link rel="stylesheet" href="~/css/Battleship/Battleship.css" asp-append-version="true" />
-}
-
-<div class="container mt-4">
-    <h2 class="mb-4">Seleccione la celda inicial</h2>
-
-    <div class="card">
-        <div class="card-body">
-            <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
-                <span class="bs-ship-blocks" aria-hidden="true">
-                    @for (var i = 0; i < sizes[Model.SelectedShipNumber]; i++) { <span></span> }
-                </span>
-                <span>
-                    <span class="fw-semibold">Barco @(Model.SelectedShipNumber + 1)</span>
-                    <small class="text-muted d-block">@sizes[Model.SelectedShipNumber] posiciones · haga clic en la celda donde comenzará el barco</small>
-                </span>
-            </div>
-
-            <partial name="_Board" model="board" />
-
-            <div class="bs-legend">
-                <span><i class="bs-swatch is-water"></i> Celda libre</span>
-                <span><i class="bs-swatch is-ship"></i> Ocupada (no seleccionable)</span>
-            </div>
-
-            <div class="mt-4">
-                <a asp-controller="Battleship" asp-action="Game" asp-route-id="@Model.Id" class="btn btn-secondary">Volver atrás</a>
-            </div>
+<div class="container battleship-page battleship-page--wide mt-4 mb-5">
+    <h1 class="h2 mb-2">Seleccionar casilla inicial</h1>
+    <p>Barco @Model.ShipNumber (@Model.ShipSize casillas). Selecciona una casilla libre del tablero.</p>
+    @if (TempData["BattleshipPlacementError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+    <div class="battleship-legend" aria-label="Leyenda del tablero">
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--ship"></span> Ocupada</span>
+        <span class="battleship-legend__item"><span class="battleship-legend__swatch battleship-legend__swatch--empty"></span> Disponible</span>
+    </div>
+    <p class="small text-muted d-sm-none mb-2">Si no ves todas las casillas, desliza el tablero horizontalmente.</p>
+    <div class="battleship-board-scroll" tabindex="0" aria-label="Selección de casilla inicial, desplázate horizontalmente si es necesario">
+        <div class="battleship-board" aria-label="Seleccionar una casilla inicial libre">
+        @for (int row = 0; row < 12; row++)
+        {
+            @for (int column = 0; column < 12; column++)
+            {
+                if (occupied.Contains((row, column)))
+                {
+                    <span class="battleship-cell is-occupied"
+                          title="Fila @(row + 1), columna @(column + 1) ocupada"></span>
+                }
+                else
+                {
+                    <a class="battleship-cell is-selectable"
+                       asp-action="SelectDirection"
+                       asp-route-gameId="@Model.Placement.GameId"
+                       asp-route-shipNumber="@Model.ShipNumber"
+                       asp-route-row="@row"
+                       asp-route-column="@column"
+                       aria-label="Seleccionar fila @(row + 1), columna @(column + 1)"></a>
+                }
+            }
+        }
         </div>
     </div>
+    <a asp-action="Setup" asp-route-gameId="@Model.Placement.GameId"
+       class="btn btn-secondary mt-3">Volver a los barcos</a>
 </div>

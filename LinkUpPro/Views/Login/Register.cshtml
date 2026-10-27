@@ -1,81 +1,90 @@
 @model RegisterUserViewModel
 @{
-    ViewData["Title"] = "Registro";
+    ViewData["Title"] = "Registro de usuario";
 }
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-8">
-            <div class="card">
-                <div class="card-body p-4">
-                    <h2 class="mb-4">Crear cuenta</h2>
+<div class="card auth-card auth-card--wide">
+    <div class="card-body">
+        <h1 class="auth-title">Crear cuenta</h1>
+        <p class="auth-description">Regístrate para conectar con tus amigos.</p>
 
-                    <form asp-controller="Login" asp-action="Register" method="post" enctype="multipart/form-data">
-                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <form asp-controller="Login" asp-action="Register" method="post"
+              enctype="multipart/form-data" asp-antiforgery="true">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
 
-                        <div class="row g-3">
-                            <div class="col-12 col-md-6">
-                                <label asp-for="Name" class="form-label">Nombre</label>
-                                <input asp-for="Name" class="form-control" autocomplete="given-name" />
-                                <span asp-validation-for="Name" class="text-danger"></span>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <label asp-for="LastName" class="form-label">Apellido</label>
-                                <input asp-for="LastName" class="form-control" autocomplete="family-name" />
-                                <span asp-validation-for="LastName" class="text-danger"></span>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <label asp-for="Phone" class="form-label">Teléfono</label>
-                                <input asp-for="Phone" class="form-control" placeholder="809-555-1234" autocomplete="tel" />
-                                <span asp-validation-for="Phone" class="text-danger"></span>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <label asp-for="Email" class="form-label">Correo electrónico</label>
-                                <input asp-for="Email" class="form-control" autocomplete="email" />
-                                <span asp-validation-for="Email" class="text-danger"></span>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <label asp-for="UserName" class="form-label">Nombre de usuario</label>
-                                <input asp-for="UserName" class="form-control" autocomplete="username" />
-                                <span asp-validation-for="UserName" class="text-danger"></span>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <label asp-for="ProfileImageFile" class="form-label">Foto de perfil</label>
-                                <input asp-for="ProfileImageFile" type="file" class="form-control" accept=".jpg,.jpeg,.png,.webp" />
-                                <small class="text-muted">JPG, JPEG, PNG o WEBP. Máximo 5 MB.</small>
-                                <span asp-validation-for="ProfileImageFile" class="text-danger d-block"></span>
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <label asp-for="Password" class="form-label">Contraseña</label>
-                                <div class="input-group">
-                                    <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" />
-                                    <button type="button" class="btn btn-outline-secondary" data-toggle-password="Password" aria-label="Mostrar contraseña">Mostrar</button>
-                                </div>
-                                <span asp-validation-for="Password" class="text-danger"></span>
-                                <partial name="_PasswordStrength" model="@("Password")" />
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <label asp-for="ConfirmPassword" class="form-label">Confirmar contraseña</label>
-                                <div class="input-group">
-                                    <input asp-for="ConfirmPassword" type="password" class="form-control" autocomplete="new-password" />
-                                    <button type="button" class="btn btn-outline-secondary" data-toggle-password="ConfirmPassword" aria-label="Mostrar contraseña">Mostrar</button>
-                                </div>
-                                <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
-                            </div>
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
+                    <label asp-for="Name" class="form-label">Nombre</label>
+                    <input asp-for="Name" type="text" class="form-control" autocomplete="given-name" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label asp-for="LastName" class="form-label">Apellido</label>
+                    <input asp-for="LastName" type="text" class="form-control" autocomplete="family-name" />
+                    <span asp-validation-for="LastName" class="text-danger"></span>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label asp-for="Phone" class="form-label">Teléfono</label>
+                    <input asp-for="Phone" type="tel" class="form-control" autocomplete="tel" placeholder="809-555-1234" />
+                    <span asp-validation-for="Phone" class="text-danger"></span>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label asp-for="Email" class="form-label">Correo electrónico</label>
+                    <input asp-for="Email" type="email" class="form-control" autocomplete="email" placeholder="nombre@ejemplo.com" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="ProfileImageFile" class="form-label">Foto de perfil</label>
+                    <input asp-for="ProfileImageFile" type="file" accept=".jpg,.jpeg,.png,.webp" class="form-control" />
+                    <div class="form-text">Formatos: JPG, PNG o WebP. Máximo 5 MB.</div>
+                    <span asp-validation-for="ProfileImageFile" class="text-danger"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="UserName" class="form-label">Nombre de usuario</label>
+                    <input asp-for="UserName" type="text" class="form-control" autocomplete="username" placeholder="nombre_usuario" />
+                    <span asp-validation-for="UserName" class="text-danger"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Password" class="form-label">Contraseña</label>
+                    <div class="input-group">
+                        <input asp-for="Password" type="password" class="form-control"
+                               autocomplete="new-password" placeholder="Ingresa una contraseña" />
+                        <button type="button" class="btn btn-outline-secondary" data-password-target="Password"
+                                aria-controls="Password" aria-pressed="false">Mostrar</button>
+                    </div>
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                    <div class="mt-3">
+                        <label class="form-label" for="passwordStrengthBar">Fortaleza de la contraseña</label>
+                        <div class="progress">
+                            <div id="passwordStrengthBar" class="progress-bar w-0" role="progressbar"
+                                 aria-label="Fortaleza de la contraseña" aria-valuenow="0"
+                                 aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
-
-                        <div class="d-flex gap-2 mt-4">
-                            <a asp-controller="Login" asp-action="Index" class="btn btn-secondary">Volver atrás</a>
-                            <button type="submit" class="btn btn-primary">Registrarse</button>
-                        </div>
-                    </form>
+                        <div id="passwordStrengthLabel" class="form-text" role="status" aria-live="polite">Fortaleza: Sin evaluar</div>
+                        <div class="form-text">Al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.</div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label asp-for="ConfirmPassword" class="form-label">Confirmar contraseña</label>
+                    <div class="input-group">
+                        <input asp-for="ConfirmPassword" type="password" class="form-control"
+                               autocomplete="new-password" placeholder="Repite tu contraseña" />
+                        <button type="button" class="btn btn-outline-secondary" data-password-target="ConfirmPassword"
+                                aria-controls="ConfirmPassword" aria-pressed="false">Mostrar</button>
+                    </div>
+                    <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
                 </div>
             </div>
-        </div>
+
+            <div class="d-flex flex-column-reverse flex-sm-row gap-2 mt-4">
+                <a asp-controller="Login" asp-action="Index" class="btn btn-outline-secondary flex-fill">Volver atrás</a>
+                <button id="registerSubmitButton" type="submit" class="btn btn-primary flex-fill">Registrarse</button>
+            </div>
+        </form>
     </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    <script src="~/js/Account/Password.js" asp-append-version="true"></script>
+    <script src="~/js/Login/Register.js" asp-append-version="true"></script>
 }

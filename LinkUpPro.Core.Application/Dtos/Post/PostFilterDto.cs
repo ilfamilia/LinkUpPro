@@ -13,5 +13,7 @@ namespace LinkUpPro.Core.Application.Dtos.Post
         public DateOnly? EndDate { get; set; }
 
         public bool? IsEdited { get; set; }
+
+        public string? FriendUserId { get; set; }
     }
 }

@@ -25,6 +25,7 @@ namespace LinkUpPro.Infrastructure.Persistence
 
                     (serviceProvider, opt) =>
                     {
+                        opt.EnableSensitiveDataLogging();
                         opt.UseSqlServer(connectionString, sql =>
                         {
                             sql.MigrationsAssembly(typeof(LinkUpProAppContext).Assembly.FullName);
@@ -40,9 +41,6 @@ namespace LinkUpPro.Infrastructure.Persistence
             #region Repositories IOC
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
             services.AddScoped<ITransactionManager, TransactionManager>();
-            // Use a shared transaction boundary for social and game state changes.
-            services.AddScoped<IAtomicOperation, AtomicOperation>();
-            services.AddScoped<IBattleshipRepository, BattleshipRepository>();
             services.AddScoped<IPostRepository, PostRepository>();
             services.AddScoped<ICommentRepository, CommentRepository>();
             services.AddScoped<IReactionRepository, ReactionRepository>();

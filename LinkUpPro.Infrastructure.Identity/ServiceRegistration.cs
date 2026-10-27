@@ -3,8 +3,10 @@ using LinkUpPro.Infrastructure.Identity.Contexts;
 using LinkUpPro.Infrastructure.Identity.Entities;
 using LinkUpPro.Infrastructure.Identity.Services;
 using LinkUpPro.Infrastructure.Identity.TokenProviders;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,8 +18,6 @@ namespace LinkUpPro.Infrastructure.Identity
         public static void AddIdentityLayerIocForWebApp(this IServiceCollection services, IConfiguration config)
         {
             GeneralConfiguration(services, config);
-            // Publish account summaries without exposing Identity entities to Application.
-            services.AddScoped<LinkUpPro.Core.Application.Interfaces.IUserDirectoryService, LinkUpPro.Infrastructure.Identity.Services.UserDirectoryService>();
 
             #region Identity
             services.Configure<IdentityOptions>(opt => 
@@ -63,6 +63,7 @@ namespace LinkUpPro.Infrastructure.Identity
                 opt.Name = "LinkUpPro.EmailConfirmation";
                 opt.TokenLifespan = TimeSpan.FromHours(24);
             });
+
             // Security Stamp Configuration
             services.Configure<SecurityStampValidatorOptions>(opt =>
             {
@@ -77,6 +78,7 @@ namespace LinkUpPro.Infrastructure.Identity
             }).AddCookie(IdentityConstants.ApplicationScheme, opt => 
             {
                 opt.LoginPath = "/Login";
+                opt.AccessDeniedPath = "/Login/AccessDenied";
 
                 // Normal session
                 opt.ExpireTimeSpan = TimeSpan.FromMinutes(30);
@@ -100,30 +102,73 @@ namespace LinkUpPro.Infrastructure.Identity
                     return Task.CompletedTask;
                 };
 
-                // Tell the login page why the user arrived: an existing session that expired (inactivity)
-                // or an anonymous visit to a protected page.
-                opt.Events.OnRedirectToLogin = context =>
-                {
-                    string cookieName = context.Options.Cookie.Name ?? ".AspNetCore.Identity.Application";
-                    string reason = context.Request.Cookies.ContainsKey(cookieName) ? "timeout" : "required";
-                    context.Response.Redirect(Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(context.RedirectUri, "reason", reason));
-                    return Task.CompletedTask;
-                };
-
                 opt.Events.OnValidatePrincipal = async context =>
                 {
+                    var userManager = context.HttpContext.RequestServices
+                        .GetRequiredService<UserManager<AppUser>>();
+
+                    AppUser? user = context.Principal == null
+                        ? null
+                        : await userManager.GetUserAsync(context.Principal);
+
+                    if (user == null || !user.EmailConfirmed)
+                    {
+                        context.RejectPrincipal();
+
+                        await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+
+                        return;
+                    }
+
                     await SecurityStampValidator.ValidatePrincipalAsync(context);
 
-                    // Prevent extending persistent sessions during stamp validation.
                     if (context.Properties.IsPersistent)
                     {
                         context.ShouldRenew = false;
                     }
                 };
+
+                opt.Events.OnRedirectToLogin = context =>
+                {
+                    string? cookieValue = context.Options.CookieManager.GetRequestCookie(context.HttpContext,
+                            context.Options.Cookie.Name!);
+
+                    bool sessionExpired = false;
+
+                    if (!string.IsNullOrEmpty(cookieValue))
+                    {
+                        var ticket = context.Options.TicketDataFormat.Unprotect(cookieValue);
+
+                        if (ticket != null &&
+                            !ticket.Properties.IsPersistent &&
+                            ticket.Properties.ExpiresUtc is DateTimeOffset expiresUtc &&
+                            expiresUtc <= DateTimeOffset.UtcNow)
+                        {
+                            sessionExpired = true;
+                        }
+                    }
+
+                    string redirectUrl = context.RedirectUri;
+
+                    if (sessionExpired)
+                    {
+                        redirectUrl = QueryHelpers.AddQueryString(redirectUrl, "sessionExpired", "true");
+                    }
+
+                    context.Response.Redirect(redirectUrl);
+
+                    return Task.CompletedTask;
+
+                };
+            })
+            .AddCookie(IdentityConstants.TwoFactorRememberMeScheme, opt =>
+            {
+                opt.Cookie.HttpOnly = true;
+                opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                opt.Cookie.SameSite = SameSiteMode.Lax;
             });
 
             services.AddAuthorization();
-            services.AddMemoryCache();
             services.AddScoped<IAccountServiceForWebApp, AccountServiceForWebApp>();
             #endregion
 
@@ -150,6 +195,7 @@ namespace LinkUpPro.Infrastructure.Identity
 
                     (serviceProvider, opt) =>
                     {
+                        opt.EnableSensitiveDataLogging();
                         opt.UseSqlServer(connectionString, sql =>
                         {
                             sql.MigrationsAssembly(typeof(IdentityContext).Assembly.FullName);

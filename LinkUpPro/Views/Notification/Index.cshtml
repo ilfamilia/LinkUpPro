@@ -1,0 +1,97 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Notification.NotificationIndexViewModel
+@using LinkUpPro.Core.Domain.Enums
+
+@{
+    ViewData["Title"] = "Notificaciones";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Notification/Index.css" asp-append-version="true" />
+}
+
+<div class="notification-page my-4">
+    <header class="notification-page__header">
+        <div>
+            <h1 class="mb-1">Notificaciones</h1>
+            <p class="notification-page__subheading mb-0">Sin leer: @Model.UnreadCount</p>
+        </div>
+        @if (Model.UnreadCount > 0)
+        {
+            <form asp-controller="Notification" asp-action="MarkAllAsRead"
+                  method="post" asp-antiforgery="true">
+                <button type="submit" class="btn btn-primary">Marcar todas como leídas</button>
+            </form>
+        }
+    </header>
+
+    @if (TempData["NotificationWarning"] is string warning)
+    {
+        <div class="alert alert-warning" role="alert">@warning</div>
+    }
+
+    @if (Model.Notifications.Count == 0)
+    {
+        <div class="notification-empty-state" role="status">No tiene notificaciones.</div>
+    }
+    else
+    {
+        <div class="d-flex flex-column gap-3">
+            @foreach (var notification in Model.Notifications)
+            {
+                string actorImagePath = string.IsNullOrWhiteSpace(notification.ActorProfileImagePath)
+                    ? Url.Content("~/Images/Defaults/default-profile.png")
+                    : Url.Content($"~/{notification.ActorProfileImagePath}");
+
+                <article class="card notification-card @(notification.IsRead ? "" : "notification-unread")">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start gap-3">
+                            <img src="@actorImagePath"
+                                 alt="Foto de @notification.ActorUserName"
+                                 class="notification-avatar rounded-circle" loading="lazy" />
+                            <div class="notification-card__content flex-grow-1">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <strong class="notification-card__user">@notification.ActorUserName</strong>
+                                    <span class="notification-status notification-status--type">
+                                        @(notification.Type switch
+                                        {
+                                            NotificationType.Comment => "Comentario",
+                                            NotificationType.Reply => "Respuesta",
+                                            _ => "Reacción"
+                                        })
+                                    </span>
+                                    @if (!notification.IsRead)
+                                    {
+                                        <span class="notification-status notification-status--unread">No leída</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="notification-status notification-status--read">Leída</span>
+                                    }
+                                </div>
+                                <p class="notification-card__description">@notification.Description</p>
+                                <time class="notification-card__date">
+                                    @notification.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC
+                                </time>
+                                <div class="notification-card__actions">
+                                    <a asp-controller="Notification" asp-action="Open"
+                                       asp-route-id="@notification.Id"
+                                       class="btn btn-outline-primary btn-sm">Ver contenido</a>
+                                    @if (!notification.IsRead)
+                                    {
+                                        <form asp-controller="Notification" asp-action="MarkAsRead"
+                                              asp-route-id="@notification.Id"
+                                              method="post" asp-antiforgery="true">
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                                Marcar como leída
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</div>

@@ -1,7 +1,4 @@
 <Solution>
-  <Folder Name="/Tests/">
-    <Project Path="LinkUpPro.Tests/LinkUpPro.Tests.csproj" />
-  </Folder>
   <Folder Name="/Source/" />
   <Folder Name="/Source/Core/">
     <Project Path="LinkUpPro.Core.Application/LinkUpPro.Core.Application.csproj" />

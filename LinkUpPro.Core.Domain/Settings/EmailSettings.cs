@@ -1,4 +1,4 @@
-﻿namespace LinkUpPro.Core.Domain.Settings
+namespace LinkUpPro.Core.Domain.Settings
 {
     public class EmailSettings
     {
@@ -8,8 +8,5 @@
         public required string SmtpUser { get; set; }
         public required string SmtpPass { get; set; }
         public required string DisplayName { get; set; }
-
-        // Optional local folder: when set, emails are saved as .eml files instead of sent through SMTP.
-        public string? PickupDirectory { get; set; }
     }    
 }

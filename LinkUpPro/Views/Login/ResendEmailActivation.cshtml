@@ -3,28 +3,31 @@
     ViewData["Title"] = "Reenviar correo de activación";
 }
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-5">
-            <div class="card">
-                <div class="card-body p-4">
-                    <h2 class="mb-3">Reenviar correo de activación</h2>
-                    <p class="text-muted">Ingrese su nombre de usuario para recibir un nuevo enlace de activación.</p>
+<div class="card auth-card">
+    <div class="card-body">
+        <h1 class="auth-title">Reenviar activación</h1>
+        <p class="auth-description">Introduce tu nombre de usuario para solicitar un nuevo enlace de activación.</p>
 
-                    <form asp-controller="Login" asp-action="ResendEmailActivation" method="post">
-                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
-                        <div class="mb-3">
-                            <label asp-for="UserName" class="form-label">Nombre de usuario</label>
-                            <input asp-for="UserName" class="form-control" autocomplete="username" />
-                            <span asp-validation-for="UserName" class="text-danger"></span>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <a asp-controller="Login" asp-action="Index" class="btn btn-secondary">Volver atrás</a>
-                            <button type="submit" class="btn btn-primary">Reenviar enlace</button>
-                        </div>
-                    </form>
-                </div>
+        @if (TempData["ActivationResendMessage"] is string message)
+        {
+            <div class="alert alert-info" role="status">@message</div>
+        }
+
+        <form asp-controller="Login" asp-action="ResendEmailActivation" method="post" asp-antiforgery="true">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+            <div class="mb-4">
+                <label asp-for="UserName" class="form-label">Nombre de usuario</label>
+                <input asp-for="UserName" class="form-control" autocomplete="username"
+                       placeholder="Ingresa tu usuario" />
+                <span asp-validation-for="UserName" class="text-danger"></span>
             </div>
+            <button type="submit" class="btn btn-primary w-100">Reenviar enlace</button>
+        </form>
+
+        <div class="auth-divider"></div>
+        <div class="auth-links">
+            <a asp-controller="Login" asp-action="Index">Volver atrás</a>
+            <a asp-controller="Login" asp-action="Register">Registrarse</a>
         </div>
     </div>
 </div>

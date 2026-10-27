@@ -1,0 +1,124 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Post.PostViewModel
+@using LinkUpPro.Core.Application.ViewModels.Comment
+@using LinkUpPro.Core.Domain.Enums
+
+@{
+    string imagePath = string.IsNullOrWhiteSpace(Model.UserProfilePicturePath)
+        ? Url.Content("~/Images/Defaults/default-profile.png")
+        : Url.Content($"~/{Model.UserProfilePicturePath}");
+    string returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+}
+
+<article class="card post-card mb-3" id="post-@Model.Id">
+    <div class="card-body">
+        <header class="post-card__header">
+            <a asp-controller="Friendship" asp-action="Profile"
+               asp-route-friendUserId="@Model.UserId" aria-label="Ver perfil de @Model.UserName">
+                <img src="@imagePath" alt="Foto de @Model.UserName"
+                     class="post-profile-image rounded-circle" loading="lazy" />
+            </a>
+            <div class="post-card__author">
+                <h3 class="post-card__username">
+                    <a asp-controller="Friendship" asp-action="Profile"
+                       asp-route-friendUserId="@Model.UserId">@Model.UserName</a>
+                </h3>
+                <span class="post-card__date">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm") UTC</span>
+            </div>
+        </header>
+
+        <p class="post-card__content">@Model.Content</p>
+        <div class="post-card__badges mb-3">
+            <span class="post-status post-status--privacy">Solo amigos</span>
+            <span class="post-status @(Model.AllowComments ? "post-status--enabled" : "post-status--disabled")">
+                @(Model.AllowComments ? "Comentarios permitidos" : "Comentarios desactivados")
+            </span>
+            @if (Model.UpdatedAt.HasValue)
+            {
+                <span class="post-status post-status--edited">Editada</span>
+            }
+        </div>
+
+        @if (Model.MediaType == PostMediaType.Image && !string.IsNullOrWhiteSpace(Model.ImagePath))
+        {
+            <div class="post-card__media mb-3">
+                <img src="@Url.Content($"~/{Model.ImagePath}")" class="img-fluid"
+                     alt="Imagen de la publicación" loading="lazy" />
+            </div>
+        }
+        else if (Model.MediaType == PostMediaType.YouTubeVideo && !string.IsNullOrWhiteSpace(Model.YouTubeEmbedUrl))
+        {
+            <div class="ratio ratio-16x9 post-card__video mb-3">
+                <iframe src="@Model.YouTubeEmbedUrl" title="Video de YouTube"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerpolicy="strict-origin-when-cross-origin" allowfullscreen>
+                </iframe>
+            </div>
+        }
+
+        <div class="post-card__reactions" aria-label="Reacciones de la publicación">
+            <form asp-controller="Reaction" asp-action="Toggle" method="post" asp-antiforgery="true">
+                <input type="hidden" name="PostId" value="@Model.Id" />
+                <input type="hidden" name="ReactionType" value="@ReactionType.Like" />
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <button type="submit"
+                        class="btn @(Model.CurrentUserReaction == ReactionType.Like ? "btn-primary" : "btn-outline-primary") btn-sm"
+                        aria-pressed="@(Model.CurrentUserReaction == ReactionType.Like ? "true" : "false")">
+                    Me gusta (@Model.LikesCount)
+                </button>
+            </form>
+            <form asp-controller="Reaction" asp-action="Toggle" method="post" asp-antiforgery="true">
+                <input type="hidden" name="PostId" value="@Model.Id" />
+                <input type="hidden" name="ReactionType" value="@ReactionType.Dislike" />
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <button type="submit"
+                        class="btn @(Model.CurrentUserReaction == ReactionType.Dislike ? "btn-danger" : "btn-outline-danger") btn-sm"
+                        aria-pressed="@(Model.CurrentUserReaction == ReactionType.Dislike ? "true" : "false")">
+                    No me gusta (@Model.DislikesCount)
+                </button>
+            </form>
+        </div>
+
+        @if (Model.CurrentUserReaction.HasValue)
+        {
+            <div class="post-card__reaction-current">
+                <span class="text-muted small">
+                    Tu reacción: @(Model.CurrentUserReaction == ReactionType.Like ? "Me gusta" : "No me gusta")
+                </span>
+                <form asp-controller="Reaction" asp-action="Toggle" method="post" asp-antiforgery="true">
+                    <input type="hidden" name="PostId" value="@Model.Id" />
+                    <input type="hidden" name="ReactionType" value="@Model.CurrentUserReaction.Value" />
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Eliminar reacción</button>
+                </form>
+            </div>
+        }
+
+        <section id="comments-@Model.Id" class="post-card__comments" aria-label="Comentarios de la publicación">
+            <h4 class="h6 mb-3">Comentarios (@Model.CommentsCount)</h4>
+            @{ ViewData["CommentsEnabled"] = Model.AllowComments; }
+            @if (Model.Comments.Count > 0)
+            {
+                @foreach (var comment in Model.Comments)
+                {
+                    <partial name="~/Views/Home/_CommentItem.cshtml" model="comment" />
+                }
+            }
+            else
+            {
+                <p class="text-muted small mb-3">Todavía no hay comentarios.</p>
+            }
+
+            @if (Model.AllowComments)
+            {
+                <partial name="~/Views/Comment/_CreateCommentForm.cshtml"
+                         model="new CreateCommentViewModel { PostId = Model.Id }" />
+            }
+            else
+            {
+                <div class="post-comments-disabled" role="note">
+                    Los comentarios están desactivados para esta publicación.
+                </div>
+            }
+        </section>
+    </div>
+</article>

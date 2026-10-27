@@ -1,0 +1,33 @@
+﻿@model LinkUpPro.Core.Application.ViewModels.Battleship.BattleshipSurrenderViewModel
+
+@{
+    ViewData["Title"] = "Confirmar rendición";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/Battleship/Index.css" asp-append-version="true" />
+}
+
+<div class="container battleship-page battleship-page--medium mt-4 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-9">
+            <div class="card battleship-confirm-card">
+                <div class="card-body">
+                    <h1 class="h4 mb-3">¿Está seguro que desea rendirse?</h1>
+                    <p>Partida #@Model.GameId contra <strong>@Model.OpponentUserName</strong>.</p>
+                    <p class="battleship-confirm-warning">
+                        Al aceptar, la partida terminará inmediatamente y el otro
+                        jugador será declarado ganador. No podrá deshacer esta acción.
+                    </p>
+                    <form asp-controller="Battleship" asp-action="ConfirmSurrender"
+                          method="post" asp-antiforgery="true" class="d-flex flex-wrap gap-2">
+                        <input type="hidden" name="gameId" value="@Model.GameId" />
+                        <a asp-action="Details" asp-route-gameId="@Model.GameId"
+                           class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-danger">Aceptar rendición</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

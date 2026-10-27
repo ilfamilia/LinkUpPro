@@ -69,10 +69,6 @@ namespace LinkUpPro.Infrastructure.Persistence.Repositories
             return await _dbSet.ToListAsync();
         }
 
-        /// <summary>Executes a filtered query in the database instead of loading the entire table.</summary>
-        public virtual Task<List<TEntity>> GetListAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> predicate)
-            => _dbSet.Where(predicate).ToListAsync();
-
         public virtual async Task<List<TEntity>> GetAllListWithIncludeAsync(List<string> properties)
         {
             var query = _dbSet.AsQueryable();

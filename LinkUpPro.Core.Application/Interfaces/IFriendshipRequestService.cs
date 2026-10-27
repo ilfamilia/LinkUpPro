@@ -1,26 +1,28 @@
-using LinkUpPro.Core.Application.Dtos.Social;
+﻿using LinkUpPro.Core.Application.Results;
+using LinkUpPro.Core.Application.Dtos.FriendshipRequest;
 
-namespace LinkUpPro.Core.Application.Interfaces;
-
-/// <summary>Controls request eligibility, recipient responses, sender cancellation, and sender history.</summary>
-public interface IFriendshipRequestService
+namespace LinkUpPro.Core.Application.Interfaces
 {
-    /// <summary>Lists actionable received pending requests.</summary>
-    Task<List<FriendshipRequestDto>> GetIncomingAsync();
-    /// <summary>Lists visible sent history without cancelled or hidden entries.</summary>
-    Task<List<FriendshipRequestDto>> GetSentAsync();
-    /// <summary>Finds active users without a friendship or pending request in either direction.</summary>
-    Task<List<FriendDto>> GetEligibleUsersAsync(string? search = null);
-    /// <summary>Counts actionable received requests for the navigation badge.</summary>
-    Task<int> GetPendingCountAsync();
-    /// <summary>Creates a request using the trusted authenticated sender.</summary>
-    Task SendAsync(string receiverId);
-    /// <summary>Accepts a received request and creates or reactivates friendship atomically.</summary>
-    Task AcceptAsync(int requestId);
-    /// <summary>Rejects a received request while preserving its history.</summary>
-    Task RejectAsync(int requestId);
-    /// <summary>Cancels a still-pending request owned by the sender.</summary>
-    Task CancelAsync(int requestId);
-    /// <summary>Hides accepted or rejected sender history without changing the relationship.</summary>
-    Task HideAsync(int requestId);
+    public interface IFriendshipRequestService
+    {
+        Task<ServiceResult> SendAsync(string senderUserId, string receiverUserId);
+
+        Task<ServiceResult> AcceptAsync(int requestId, string currentUserId);
+
+        Task<ServiceResult> RejectAsync(int requestId, string currentUserId);
+
+        Task<ServiceResult> CancelAsync(int requestId, string currentUserId);
+
+        Task<ServiceResult> HideFromHistoryAsync(int requestId, string currentUserId);
+
+        Task<ServiceResultWithData<List<FriendshipRequestListDto>>> GetReceivedPendingAsync(string currentUserId);
+
+        Task<ServiceResultWithData<List<FriendshipRequestListDto>>> GetSentAsync(string currentUserId);
+
+        Task<ServiceResultWithData<List<AvailableFriendshipUserDto>>> GetAvailableUsersAsync(string currentUserId, string? userNameFilter = null);
+
+        Task<ServiceResultWithData<List<FriendshipUserDto>>> GetMutualFriendsAsync(string currentUserId, string otherUserId);
+
+        Task<ServiceResultWithData<int>> GetReceivedPendingCountAsync(string currentUserId);
+    }
 }

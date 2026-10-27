@@ -1,105 +1,183 @@
-@model EditUserViewModel
+﻿@model EditUserViewModel
+
 @{
     ViewData["Title"] = "Mi perfil";
+
+    string profileImagePath = string.IsNullOrWhiteSpace(Model.ProfileImagePath)
+        ? Url.Content("~/Images/Defaults/default-profile.png")
+        : Url.Content($"~/{Model.ProfileImagePath}");
 }
 
-@section Styles
-{
-    <link rel="stylesheet" href="~/css/Home/Index.css" asp-append-version="true" />
+@section Styles {
+    <link rel="stylesheet" href="~/css/Profile/Index.css" asp-append-version="true" />
 }
 
-<div class="container mt-4">
-    <h2 class="mb-4">Mi perfil</h2>
+<div class="profile-page my-4">
+    <header class="profile-page__intro mb-4">
+        <h1 class="mb-1">Mi perfil</h1>
+        <p class="text-muted mb-0">Consulta tu información y mantén tus datos personales actualizados.</p>
+    </header>
 
-    <div class="card mb-4">
-        <div class="card-body d-flex flex-wrap align-items-center gap-3">
-            <img src="@SocialDisplay.ImageUrl(Url, Model.ProfileImagePath)" alt="Foto de perfil de @Model.UserName"
-                 class="profile-image-lg rounded-circle" />
-            <div>
-                <h4 class="card-title mb-1">@Model.Name @Model.LastName</h4>
-                <p class="text-muted mb-0">@("@" + Model.UserName) · @Model.Email</p>
+    <form asp-controller="Profile" asp-action="Edit" method="post"
+          enctype="multipart/form-data" asp-antiforgery="true">
+
+        <div asp-validation-summary="ModelOnly"
+             class="profile-validation-summary text-danger mb-4" role="alert"></div>
+
+        <section class="card profile-identity mb-4" aria-labelledby="profile-identity-title">
+            <div class="card-body">
+                <div class="d-flex align-items-center flex-wrap gap-3 gap-md-4">
+                    <img src="@profileImagePath" alt="Foto de perfil actual"
+                         class="profile-avatar rounded-circle" width="112" height="112" />
+                    <div class="profile-identity__details">
+                        <h2 id="profile-identity-title" class="h4 mb-1">@Model.Name @Model.LastName</h2>
+                        <p class="profile-identity__username mb-1">@("@" + Model.UserName)</p>
+                        <p class="profile-identity__description mb-0">
+                            Puedes cambiar tu foto de perfil en la sección Datos personales.
+                        </p>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
+        </section>
 
-    <div class="card">
-        <div class="card-body">
-            <form asp-controller="Profile" asp-action="Index" method="post" enctype="multipart/form-data">
-                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+        <section class="card profile-card mb-4" aria-labelledby="profile-account-title">
+            <div class="card-body">
+                <div class="profile-section-header">
+                    <h2 id="profile-account-title" class="h5 mb-1">Información de la cuenta</h2>
+                    <p class="text-muted mb-0 small">Datos asociados a tu cuenta de LinkUp Pro.</p>
+                </div>
 
-                <h5 class="card-title mb-3">Información personal</h5>
-                <div class="row g-3 mb-4">
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label for="profileUserName" class="form-label">Nombre de usuario</label>
+                        <input id="profileUserName" type="text" value="@Model.UserName"
+                               class="form-control profile-readonly" readonly />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label for="profileEmail" class="form-label">Correo electrónico</label>
+                        <input id="profileEmail" type="email" value="@Model.Email"
+                               class="form-control profile-readonly" readonly />
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card profile-card mb-4" aria-labelledby="profile-details-title">
+            <div class="card-body">
+                <div class="profile-section-header">
+                    <h2 id="profile-details-title" class="h5 mb-1">Datos personales</h2>
+                    <p class="text-muted mb-0 small">Actualiza tu nombre, teléfono o fotografía.</p>
+                </div>
+
+                <div class="row g-3">
                     <div class="col-12 col-md-6">
                         <label asp-for="Name" class="form-label">Nombre</label>
                         <input asp-for="Name" class="form-control" autocomplete="given-name" />
-                        <span asp-validation-for="Name" class="text-danger"></span>
+                        <span asp-validation-for="Name" class="text-danger small"></span>
                     </div>
                     <div class="col-12 col-md-6">
                         <label asp-for="LastName" class="form-label">Apellido</label>
                         <input asp-for="LastName" class="form-control" autocomplete="family-name" />
-                        <span asp-validation-for="LastName" class="text-danger"></span>
+                        <span asp-validation-for="LastName" class="text-danger small"></span>
                     </div>
                     <div class="col-12 col-md-6">
                         <label asp-for="Phone" class="form-label">Teléfono</label>
-                        <input asp-for="Phone" class="form-control" placeholder="809-555-1234" autocomplete="tel" />
-                        <span asp-validation-for="Phone" class="text-danger"></span>
+                        <input asp-for="Phone" class="form-control" autocomplete="tel" />
+                        <span asp-validation-for="Phone" class="text-danger small"></span>
                     </div>
-                    <div class="col-12 col-md-6">
-                        <label asp-for="ProfileImageFile" class="form-label">Nueva foto de perfil (opcional)</label>
-                        <input asp-for="ProfileImageFile" type="file" class="form-control" accept=".jpg,.jpeg,.png,.webp" />
-                        <small class="text-muted">JPG, JPEG, PNG o WEBP. Máximo 5 MB. Si no selecciona una, se conserva la actual.</small>
-                        <span asp-validation-for="ProfileImageFile" class="text-danger d-block"></span>
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <label class="form-label" for="email-readonly">Correo electrónico</label>
-                        <input id="email-readonly" class="form-control" value="@Model.Email" readonly disabled />
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <label class="form-label" for="username-readonly">Nombre de usuario</label>
-                        <input id="username-readonly" class="form-control" value="@Model.UserName" readonly disabled />
+                    <div class="col-12">
+                        <label asp-for="ProfileImageFile" class="form-label">Cambiar foto de perfil</label>
+                        <input asp-for="ProfileImageFile" type="file"
+                               accept=".jpg,.jpeg,.png,.webp" class="form-control" />
+                        <div class="form-text">Formatos permitidos: JPG, PNG o WEBP. Tamaño máximo: 5 MB.</div>
+                        <span asp-validation-for="ProfileImageFile" class="text-danger small"></span>
                     </div>
                 </div>
+            </div>
+        </section>
 
-                <h5 class="card-title mb-1">Cambiar contraseña</h5>
-                <p class="text-muted small mb-3">Opcional. Deje los tres campos vacíos para conservar su contraseña actual.</p>
-                <div class="row g-3 mb-4">
-                    <div class="col-12 col-md-4">
+        <section class="card profile-card mb-4" aria-labelledby="profile-security-title">
+            <div class="card-body">
+                <div class="profile-section-header">
+                    <h2 id="profile-security-title" class="h5 mb-1">Seguridad y contraseña</h2>
+                    <p class="text-muted mb-0 small">
+                        El cambio de contraseña es opcional. Si no deseas cambiarla, deja los tres campos vacíos.
+                    </p>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-12">
                         <label asp-for="CurrentPassword" class="form-label">Contraseña actual</label>
                         <div class="input-group">
-                            <input asp-for="CurrentPassword" type="password" class="form-control" autocomplete="current-password" />
-                            <button type="button" class="btn btn-outline-secondary" data-toggle-password="CurrentPassword" aria-label="Mostrar contraseña">Mostrar</button>
+                            <input asp-for="CurrentPassword" type="password" class="form-control"
+                                   autocomplete="current-password" />
+                            <button type="button" class="btn btn-outline-secondary profile-password-toggle"
+                                    data-password-target="CurrentPassword" aria-controls="CurrentPassword"
+                                    aria-pressed="false">Mostrar</button>
                         </div>
-                        <span asp-validation-for="CurrentPassword" class="text-danger"></span>
+                        <span asp-validation-for="CurrentPassword" class="text-danger small"></span>
                     </div>
-                    <div class="col-12 col-md-4">
+
+                    <div class="col-12 col-md-6">
                         <label asp-for="NewPassword" class="form-label">Nueva contraseña</label>
                         <div class="input-group">
-                            <input asp-for="NewPassword" type="password" class="form-control" autocomplete="new-password" />
-                            <button type="button" class="btn btn-outline-secondary" data-toggle-password="NewPassword" aria-label="Mostrar contraseña">Mostrar</button>
+                            <input asp-for="NewPassword" type="password" class="form-control"
+                                   autocomplete="new-password" />
+                            <button type="button" class="btn btn-outline-secondary profile-password-toggle"
+                                    data-password-target="NewPassword" aria-controls="NewPassword"
+                                    aria-pressed="false">Mostrar</button>
                         </div>
-                        <span asp-validation-for="NewPassword" class="text-danger"></span>
-                        <partial name="_PasswordStrength" model="@("NewPassword")" />
+                        <span asp-validation-for="NewPassword" class="text-danger small"></span>
+
+                        <div class="profile-strength mt-3">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span class="form-label mb-0">Fortaleza de la contraseña</span>
+                            </div>
+                            <div class="progress profile-strength__track">
+                                <div id="passwordStrengthBar" class="progress-bar w-0" role="progressbar"
+                                     aria-label="Fortaleza de la contraseña" aria-valuenow="0"
+                                     aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div id="passwordStrengthLabel" class="form-text" role="status" aria-live="polite">
+                                Fortaleza: Sin evaluar
+                            </div>
+                            <p class="form-text mb-0">
+                                Mínimo 8 caracteres, una mayúscula, una minúscula,
+                                un número y un carácter especial.
+                            </p>
+                        </div>
                     </div>
-                    <div class="col-12 col-md-4">
+
+                    <div class="col-12 col-md-6">
                         <label asp-for="ConfirmPassword" class="form-label">Confirmar contraseña</label>
                         <div class="input-group">
-                            <input asp-for="ConfirmPassword" type="password" class="form-control" autocomplete="new-password" />
-                            <button type="button" class="btn btn-outline-secondary" data-toggle-password="ConfirmPassword" aria-label="Mostrar contraseña">Mostrar</button>
+                            <input asp-for="ConfirmPassword" type="password" class="form-control"
+                                   autocomplete="new-password" />
+                            <button type="button" class="btn btn-outline-secondary profile-password-toggle"
+                                    data-password-target="ConfirmPassword" aria-controls="ConfirmPassword"
+                                    aria-pressed="false">Mostrar</button>
                         </div>
-                        <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                        <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
                     </div>
                 </div>
 
-                <div class="d-flex gap-2">
-                    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Volver atrás</a>
-                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
-                </div>
-            </form>
+                <div id="passwordChangeMessage" class="form-text profile-password-message mt-3"
+                     role="status" aria-live="polite"></div>
+
+                <p class="profile-security-note mb-0 mt-3">
+                    Si cambias la contraseña, se cerrará tu sesión y deberás iniciar sesión nuevamente.
+                </p>
+            </div>
+        </section>
+
+        <div class="profile-form-actions d-flex flex-wrap gap-2 justify-content-end">
+            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Volver atrás</a>
+            <button id="profileSubmitButton" type="submit" class="btn btn-primary">Guardar cambios</button>
         </div>
-    </div>
+    </form>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    <script src="~/js/Account/Password.js" asp-append-version="true"></script>
+    <script src="~/js/Profile/Index.js" asp-append-version="true"></script>
 }

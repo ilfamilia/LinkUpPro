@@ -1,0 +1,26 @@
+﻿@model bool
+@{
+    ViewData["Title"] = "Resultado del registro";
+}
+
+<div class="card auth-card">
+    <div class="card-body text-center">
+        <h1 class="auth-title">Registro de usuario</h1>
+        @if (Model)
+        {
+            <div class="alert alert-success mt-4" role="status">
+                Su cuenta fue creada correctamente. Hemos enviado un enlace de activación a su correo electrónico.
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning mt-4" role="status">
+                Su cuenta fue creada correctamente, pero no pudimos enviar el correo de activación.
+                Puede solicitar un nuevo enlace desde la opción de reenvío.
+            </div>
+            <a asp-controller="Login" asp-action="ResendEmailActivation"
+               class="btn btn-outline-primary w-100 mb-3">Reenviar correo de activación</a>
+        }
+        <a asp-controller="Login" asp-action="Index" class="btn btn-primary w-100 mt-2">Volver al inicio de sesión</a>
+    </div>
+</div>
