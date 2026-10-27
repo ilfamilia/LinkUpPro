@@ -108,17 +108,17 @@ namespace LinkUpPro.Controllers
                     break;
 
                 default:
-                    if (!string.IsNullOrWhiteSpace(uploadedImagePath))
-                    {
-                        FileManager.DeleteFile(uploadedImagePath);
-                    }
-
                     foreach (string error in result.Errors)
                     {
                         ModelState.AddModelError(string.Empty, error);
                     }
 
                     break;
+            }
+
+            if (!string.IsNullOrWhiteSpace(uploadedImagePath))
+            {
+                FileManager.DeleteFile(uploadedImagePath);
             }
 
             return await ReturnHomeAsync(vm, user);
@@ -262,17 +262,17 @@ namespace LinkUpPro.Controllers
                     break;
 
                 default:
-                    if (!string.IsNullOrWhiteSpace(uploadedImagePath))
-                    {
-                        FileManager.DeleteFile(uploadedImagePath);
-                    }
-
                     foreach (string error in result.Errors)
                     {
                         ModelState.AddModelError(string.Empty, error);
                     }
 
                     break;
+            }
+
+            if (!string.IsNullOrWhiteSpace(uploadedImagePath))
+            {
+                FileManager.DeleteFile(uploadedImagePath);
             }
 
             return ReturnEdit(vm, postId, previousImagePath);
