@@ -89,7 +89,6 @@ namespace LinkUpPro.Core.Application.Services
                     type = NotificationType.Comment;
                 }
 
-                // No se crean notificaciones por interacciones propias
                 if (comment.UserId == recipientUserId)
                 {
                     return ServiceResult.Success();

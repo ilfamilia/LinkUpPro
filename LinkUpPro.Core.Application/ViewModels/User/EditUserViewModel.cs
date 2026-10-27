@@ -5,8 +5,8 @@ namespace LinkUpPro.Core.Application.ViewModels.User
 {
     public class EditUserViewModel
     {
-        [Required(ErrorMessage = "Debe ingresar su nombre")]
-        [RegularExpression(@".*\S.*", ErrorMessage = "El nombre no puede contener únicamente espacios")]
+        [Required(ErrorMessage = "Debe ingresar su nombre.")]
+        [RegularExpression(@".*\S.*", ErrorMessage = "El nombre no puede contener únicamente espacios.")]
         [DataType(DataType.Text)]
         public required string Name { get; set; }
 

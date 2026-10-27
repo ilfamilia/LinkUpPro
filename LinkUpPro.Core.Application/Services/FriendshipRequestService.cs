@@ -176,8 +176,6 @@ namespace LinkUpPro.Core.Application.Services
 
                 DateTime now = DateTime.UtcNow;
 
-                // Una transición condicional impide aceptar una solicitud que
-                // otro usuario o proceso acaba de responder o cancelar.
                 int changed = await _friendshipRequestRepository.GetAllQuery()
                     .Where(item => item.Id == requestId &&
                                    item.ReceiverUserId == currentUserId &&
@@ -603,7 +601,6 @@ namespace LinkUpPro.Core.Application.Services
             });
         }
 
-        // Ayudantes para las consultas: no se exponen datos privados de Identity.
         private async Task<ServiceResultWithData<T>?> ValidateReaderAsync<T>(string currentUserId)
         {
             if (string.IsNullOrWhiteSpace(currentUserId))

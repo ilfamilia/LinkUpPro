@@ -38,7 +38,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (dto == null)
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "Los datos del comentario son inválidos");
+                        "Los datos del comentario son inválidos.");
                 }
 
                 if (string.IsNullOrWhiteSpace(dto.UserId))
@@ -51,14 +51,14 @@ namespace LinkUpPro.Core.Application.Services
                     dto.Content.Trim().Length > 500)
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "El comentario debe contener entre 1 y 500 caracteres");
+                        "El comentario debe contener entre 1 y 500 caracteres.");
                 }
 
                 if (dto.PostId <= 0 ||
                     (dto.ParentCommentId.HasValue && dto.ParentCommentId.Value <= 0))
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "Los identificadores proporcionados son inválidos");
+                        "Los identificadores proporcionados son inválidos.");
                 }
 
                 bool isUserActive = await _userAccountStatusService.IsUserActiveAsync(dto.UserId);
@@ -66,7 +66,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (!isUserActive)
                 {
                     return ServiceResult.Failure(OperationStatus.Forbidden,
-                        "La cuenta del usuario no está activa");
+                        "La cuenta del usuario no está activa.");
                 }
 
                 var postResult = await _postService.GetVisiblePostByIdAsync(dto.PostId, dto.UserId);
@@ -79,13 +79,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (postResult.Data == null)
                 {
                     return ServiceResult.Failure(OperationStatus.NotFound,
-                        "La publicación no está disponible");
+                        "La publicación no está disponible.");
                 }
 
                 if (!postResult.Data.AllowComments)
                 {
                     return ServiceResult.Failure(OperationStatus.Forbidden,
-                        "Los comentarios están desactivados para esta publicación");
+                        "Los comentarios están desactivados para esta publicación.");
                 }
 
                 if (dto.ParentCommentId.HasValue)
@@ -97,7 +97,7 @@ namespace LinkUpPro.Core.Application.Services
                         parentComment.PostId != dto.PostId)
                     {
                         return ServiceResult.Failure(OperationStatus.NotFound,
-                            "El comentario al que intenta responder no está disponible");
+                            "El comentario al que intenta responder no está disponible.");
                     }
                 }
 
@@ -107,14 +107,12 @@ namespace LinkUpPro.Core.Application.Services
                 comment.UpdatedAt = null;
                 comment.IsDeleted = false;
 
-                // Los repositorios llaman SaveChangesAsync: comenzar antes de guardar
                 bool transactionOpen = false;
                 try
                 {
                     await _transactionManager.BeginTransactionAsync();
                     transactionOpen = true;
 
-                    // AddAsync asigna el Id generado que usará la notificación
                     await _commentRepository.AddAsync(comment);
 
                     ServiceResult notificationResult =
@@ -159,13 +157,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (dto == null)
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "Los datos del comentario son inválidos");
+                        "Los datos del comentario son inválidos.");
                 }
 
                 if (string.IsNullOrWhiteSpace(dto.Content) || dto.Content.Trim().Length > 500)
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "El comentario debe contener entre 1 y 500 caracteres");
+                        "El comentario debe contener entre 1 y 500 caracteres.");
                 }
 
                 var commentResult = await GetMyCommentByIdAsync(commentId, dto.UserId);
@@ -180,13 +178,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (comment == null || comment.IsDeleted)
                 {
                     return ServiceResult.Failure(OperationStatus.NotFound,
-                        "El comentario no pudo ser encontrado");
+                        "El comentario no pudo ser encontrado.");
                 }
 
                 if (comment.UserId != dto.UserId)
                 {
                     return ServiceResult.Failure(OperationStatus.Forbidden,
-                        "No posee permisos para editar este comentario");
+                        "No posee permisos para editar este comentario.");
                 }
 
                 _mapper.Map(dto, comment);
@@ -198,7 +196,7 @@ namespace LinkUpPro.Core.Application.Services
 
                 return updatedComment != null ? ServiceResult.Success()
                     : ServiceResult.Failure(OperationStatus.NotFound,
-                        "No se pudo actualizar el comentario");
+                        "No se pudo actualizar el comentario.");
             });
         }
 
@@ -219,13 +217,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (comment == null || comment.IsDeleted)
                 {
                     return ServiceResult.Failure(OperationStatus.NotFound,
-                        "El comentario no pudo ser encontrado");
+                        "El comentario no pudo ser encontrado;");
                 }
 
                 if (comment.UserId != userId)
                 {
                     return ServiceResult.Failure(OperationStatus.Forbidden,
-                        "No posee permisos para eliminar este comentario");
+                        "No posee permisos para eliminar este comentario.");
                 }
 
                 comment.IsDeleted = true;
@@ -234,7 +232,7 @@ namespace LinkUpPro.Core.Application.Services
 
                 return deletedComment != null ? ServiceResult.Success()
                     : ServiceResult.Failure(OperationStatus.NotFound,
-                        "No se pudo eliminar el comentario");
+                        "No se pudo eliminar el comentario.");
             });
         }
 
@@ -250,7 +248,7 @@ namespace LinkUpPro.Core.Application.Services
             if (result.Data == null || !result.Data.TryGetValue(postId, out List<CommentDto>? comments))
             {
                 return ServiceResultWithData<List<CommentDto>>.Failure(OperationStatus.Failed,
-                    "No se pudieron obtener los comentarios");
+                    "No se pudieron obtener los comentarios.");
             }
 
             return ServiceResultWithData<List<CommentDto>>.Success(comments);
@@ -263,13 +261,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (string.IsNullOrWhiteSpace(userId))
                 {
                     return ServiceResultWithData<CommentDto>.Failure(OperationStatus.Unauthorized,
-                        "El usuario no está autenticado");
+                        "El usuario no está autenticado.");
                 }
 
                 if (commentId <= 0)
                 {
                     return ServiceResultWithData<CommentDto>.Failure(OperationStatus.ValidationError,
-                        "El ID del comentario es inválido");
+                        "El ID del comentario es inválido.");
                 }
 
                 bool isUserActive = await _userAccountStatusService.IsUserActiveAsync(userId);
@@ -277,7 +275,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (!isUserActive)
                 {
                     return ServiceResultWithData<CommentDto>.Failure(OperationStatus.Forbidden,
-                        "La cuenta del usuario no está activa");
+                        "La cuenta del usuario no está activa.");
                 }
 
                 Comment? comment = await _commentRepository.GetByIdAsync(commentId);
@@ -285,13 +283,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (comment == null || comment.IsDeleted)
                 {
                     return ServiceResultWithData<CommentDto>.Failure(OperationStatus.NotFound,
-                        "El comentario no pudo ser encontrado");
+                        "El comentario no pudo ser encontrado.");
                 }
 
                 if (comment.UserId != userId)
                 {
                     return ServiceResultWithData<CommentDto>.Failure(OperationStatus.Forbidden,
-                        "No posee permisos para editar este comentario");
+                        "No posee permisos para editar este comentario.");
                 }
 
                 var postResult = await _postService.GetVisiblePostByIdAsync(comment.PostId, userId);
@@ -305,7 +303,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (postResult.Data == null)
                 {
                     return ServiceResultWithData<CommentDto>.Failure(OperationStatus.NotFound,
-                        "La publicación no está disponible");
+                        "La publicación no está disponible.");
                 }
 
                 CommentDto dto = _mapper.Map<CommentDto>(comment);
@@ -321,13 +319,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (string.IsNullOrWhiteSpace(userId))
                 {
                     return ServiceResultWithData<Dictionary<int, List<CommentDto>>>.Failure(OperationStatus.Unauthorized,
-                        "El usuario no está autenticado");
+                        "El usuario no está autenticado.");
                 }
 
                 if (postIds == null)
                 {
                     return ServiceResultWithData<Dictionary<int, List<CommentDto>>>.Failure(OperationStatus.ValidationError,
-                        "Los identificadores de las publicaciones son inválidos");
+                        "Los identificadores de las publicaciones son inválidos.");
                 }
 
                 int[] ids = postIds.Distinct().ToArray();
@@ -335,7 +333,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (ids.Any(id => id <= 0))
                 {
                     return ServiceResultWithData<Dictionary<int, List<CommentDto>>>.Failure(OperationStatus.ValidationError,
-                        "Los identificadores de las publicaciones son inválidos");
+                        "Los identificadores de las publicaciones son inválidos.");
                 }
 
                 var visiblePostsResult = await _postService.GetVisiblePostIdsAsync(ids, userId);
@@ -349,7 +347,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (visiblePostsResult.Data == null || !visiblePostsResult.Data.SetEquals(ids))
                 {
                     return ServiceResultWithData<Dictionary<int, List<CommentDto>>>.Failure(OperationStatus.Forbidden,
-                        "No posee permisos para visualizar una o más publicaciones");
+                        "No posee permisos para visualizar una o más publicaciones.");
                 }
 
                 Dictionary<int, List<CommentDto>> result = ids.ToDictionary(id => id,
@@ -409,6 +407,5 @@ namespace LinkUpPro.Core.Application.Services
 
             return !comment.IsDeleted || comment.Replies.Count > 0;
         }
-
     }
 }

@@ -38,19 +38,19 @@ namespace LinkUpPro.Core.Application.Services
                 if (string.IsNullOrWhiteSpace(dto.UserId))
                 {
                     return ServiceResult.Failure(OperationStatus.Unauthorized,
-                        "El usuario no está autenticado");
+                        "El usuario no está autenticado.");
                 }
 
                 if (string.IsNullOrWhiteSpace(dto.Content) || dto.Content.Trim().Length > 1000)
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "El contenido debe contener entre 1 y 1000 caracteres");
+                        "El contenido debe contener entre 1 y 1000 caracteres.");
                 }
 
                 if (!Enum.IsDefined(dto.Privacy) || !Enum.IsDefined(dto.MediaType))
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "Tipo de privacidad o media inválidos");
+                        "Tipo de privacidad o media inválidos.");
                 }
 
                 if (dto.MediaType == PostMediaType.Image)
@@ -58,7 +58,7 @@ namespace LinkUpPro.Core.Application.Services
                     if (string.IsNullOrWhiteSpace(dto.ImagePath) || !string.IsNullOrWhiteSpace(dto.YouTubeUrl))
                     {
                         return ServiceResult.Failure(OperationStatus.ValidationError,
-                            "La publicación de una imagen solo debe contener la imagen sin video");
+                            "La publicación de una imagen solo debe contener la imagen sin video.");
                     }
                 }
                 else
@@ -66,7 +66,7 @@ namespace LinkUpPro.Core.Application.Services
                     if (!string.IsNullOrWhiteSpace(dto.ImagePath) || GetYouTubeVideoId(dto.YouTubeUrl) is null)
                     {
                         return ServiceResult.Failure(OperationStatus.ValidationError,
-                            "La publicación de un video debe tener una URL de YouTube válida y no debe incluir una imagen");
+                            "La publicación de un video debe tener una URL de YouTube válida y no debe incluir una imagen.");
                     }
                 }
 
@@ -92,13 +92,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (string.IsNullOrWhiteSpace(dto.UserId))
                 {
                     return ServiceResult.Failure(OperationStatus.Unauthorized,
-                        "El usuario no está autenticado");
+                        "El usuario no está autenticado.");
                 }
 
                 if (postId <= 0)
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "El ID de la publicación es inválido");
+                        "El ID de la publicación es inválido.");
                 }
 
                 Post? post = await _postRepository.GetByIdAsync(postId);
@@ -106,25 +106,25 @@ namespace LinkUpPro.Core.Application.Services
                 if (post == null || post.IsDeleted)
                 {
                     return ServiceResult.Failure(OperationStatus.NotFound,
-                        "La publicación no fue encontrada");
+                        "La publicación no fue encontrada.");
                 }
 
                 if (post.UserId != dto.UserId)
                 {
                     return ServiceResult.Failure(OperationStatus.Forbidden,
-                        "No puedes editar las publicaciones de otras personas");
+                        "No puedes editar las publicaciones de otras personas.");
                 }
 
                 if (string.IsNullOrWhiteSpace(dto.Content) || dto.Content.Trim().Length > 1000)
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "El contenido debe contener entre 1 y 1000 caracteres");
+                        "El contenido debe contener entre 1 y 1000 caracteres.");
                 }
 
                 if (!Enum.IsDefined(dto.Privacy) || !Enum.IsDefined(dto.MediaType))
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "Tipo de privacidad o media inválidos");
+                        "Tipo de privacidad o media inválidos.");
                 }
 
                 string? imagePath = null;
@@ -137,7 +137,7 @@ namespace LinkUpPro.Core.Application.Services
                     if (string.IsNullOrWhiteSpace(imagePath) || !string.IsNullOrWhiteSpace(dto.YouTubeUrl))
                     {
                         return ServiceResult.Failure(OperationStatus.ValidationError,
-                            "La publicación de una imagen solo debe contener la imagen sin video");
+                            "La publicación de una imagen solo debe contener la imagen sin video.");
                     }
                 }
                 else
@@ -145,7 +145,7 @@ namespace LinkUpPro.Core.Application.Services
                     if (!string.IsNullOrWhiteSpace(dto.ImagePath) || GetYouTubeVideoId(dto.YouTubeUrl) is null)
                     {
                         return ServiceResult.Failure(OperationStatus.ValidationError,
-                            "La publicación de un video debe tener una URL de YouTube válida y no debe incluir una imagen");
+                            "La publicación de un video debe tener una URL de YouTube válida y no debe incluir una imagen.");
                     }
                 }
 
@@ -161,7 +161,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (updatedPost == null)
                 {
                     return ServiceResult.Failure(OperationStatus.NotFound,
-                        "La publicación no fue encontrada");
+                        "La publicación no fue encontrada.");
                 }
 
                 return ServiceResult.Success();
@@ -175,13 +175,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (string.IsNullOrWhiteSpace(userId))
                 {
                     return ServiceResult.Failure(OperationStatus.Unauthorized,
-                        "El usuario no está autenticado");
+                        "El usuario no está autenticado.");
                 }
 
                 if (postId <= 0)
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "El ID de la publicación es inválido");
+                        "El ID de la publicación es inválido.");
                 }
 
                 Post? post = await _postRepository.GetByIdAsync(postId);
@@ -189,13 +189,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (post == null || post.IsDeleted)
                 {
                     return ServiceResult.Failure(OperationStatus.NotFound,
-                        "La publicación no fue encontrada");
+                        "La publicación no fue encontrada.");
                 }
 
                 if (post.UserId != userId)
                 {
                     return ServiceResult.Failure(OperationStatus.Forbidden,
-                        "No puedes eliminar publicaciones de otras personas");
+                        "No puedes eliminar publicaciones de otras personas.");
                 }
 
                 post.IsDeleted = true;
@@ -206,7 +206,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (updatedPost == null)
                 {
                     return ServiceResult.Failure(OperationStatus.NotFound,
-                        "La publicación no fue encontrada");
+                        "La publicación no fue encontrada.");
                 }
 
                 return ServiceResult.Success();
@@ -220,13 +220,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (string.IsNullOrWhiteSpace(userId))
                 {
                     return ServiceResultWithData<PostDto>.Failure(OperationStatus.Unauthorized,
-                        "El usuario no está autenticado");
+                        "El usuario no está autenticado.");
                 }
 
                 if (postId <= 0)
                 {
                     return ServiceResultWithData<PostDto>.Failure(OperationStatus.ValidationError,
-                        "El ID de la publicación es inválido");
+                        "El ID de la publicación es inválido.");
                 }
 
                 Post? post = await _postRepository.GetAllQuery()
@@ -236,13 +236,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (post == null)
                 {
                     return ServiceResultWithData<PostDto>.Failure(OperationStatus.NotFound,
-                        "La publicación no fue encontrada");
+                        "La publicación no fue encontrada.");
                 }
 
                 if (post.UserId != userId)
                 {
                     return ServiceResultWithData<PostDto>.Failure(OperationStatus.Forbidden,
-                        "No puedes editar publicaciones de otras personas");
+                        "No puedes editar publicaciones de otras personas.");
                 }
 
                 PostDto postDto = _mapper.Map<PostDto>(post);
@@ -258,13 +258,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (string.IsNullOrWhiteSpace(userId))
                 {
                     return ServiceResultWithData<PostDto>.Failure(OperationStatus.Unauthorized,
-                        "El usuario no está autenticado");
+                        "El usuario no está autenticado.");
                 }
 
                 if (postId <= 0)
                 {
                     return ServiceResultWithData<PostDto>.Failure(OperationStatus.ValidationError,
-                        "El ID de la publicación es inválido");
+                        "El ID de la publicación es inválido.");
                 }
 
                 var friendshipsQuery = _friendshipRepository.GetAllQuery()
@@ -287,7 +287,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (post == null)
                 {
                     return ServiceResultWithData<PostDto>.Failure(OperationStatus.NotFound,
-                        "La publicación no pudo ser encontrada");
+                        "La publicación no pudo ser encontrada.");
                 }
 
                 bool isAuthorActive = await _userAccountStatusService.IsUserActiveAsync(post.UserId);
@@ -295,7 +295,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (!isAuthorActive)
                 {
                     return ServiceResultWithData<PostDto>.Failure(OperationStatus.NotFound,
-                        "La publicación no está disponible");
+                        "La publicación no está disponible.");
                 }
 
                 PostDto postDto = _mapper.Map<PostDto>(post);
@@ -317,7 +317,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (string.IsNullOrWhiteSpace(userId))
                 {
                     return ServiceResultWithData<HashSet<int>>.Failure(OperationStatus.Unauthorized,
-                        "El usuario no está autenticado");
+                        "El usuario no está autenticado.");
                 }
 
                 int[] ids = postIds.Distinct().ToArray();
@@ -325,7 +325,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (ids.Any(id => id <= 0))
                 {
                     return ServiceResultWithData<HashSet<int>>.Failure(OperationStatus.ValidationError,
-                        "Los identificadores de las publicaciones son inválidos");
+                        "Los identificadores de las publicaciones son inválidos.");
                 }
 
                 bool isUserActive = await _userAccountStatusService.IsUserActiveAsync(userId);
@@ -333,7 +333,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (!isUserActive)
                 {
                     return ServiceResultWithData<HashSet<int>>.Failure(OperationStatus.Forbidden,
-                        "La cuenta del usuario no está activa");
+                        "La cuenta del usuario no está activa.");
                 }
 
                 var friendshipsQuery = _friendshipRepository.GetAllQuery()
@@ -374,7 +374,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (string.IsNullOrWhiteSpace(userId))
                 {
                     return ServiceResultWithData<List<PostDto>>.Failure(OperationStatus.Unauthorized,
-                        "El usuario no está autenticado");
+                        "El usuario no está autenticado.");
                 }
 
                 IQueryable<Post> query = _postRepository.GetAllQuery()
@@ -438,13 +438,13 @@ namespace LinkUpPro.Core.Application.Services
                 if (string.IsNullOrWhiteSpace(userId))
                 {
                     return ServiceResultWithData<List<PostDto>>.Failure(
-                        OperationStatus.Unauthorized, "El usuario no está autenticado");
+                        OperationStatus.Unauthorized, "El usuario no está autenticado.");
                 }
 
                 if (!await _userAccountStatusService.IsUserActiveAsync(userId))
                 {
                     return ServiceResultWithData<List<PostDto>>.Failure(
-                        OperationStatus.Forbidden, "La cuenta del usuario no está activa");
+                        OperationStatus.Forbidden, "La cuenta del usuario no está activa.");
                 }
 
                 if (filter != null)

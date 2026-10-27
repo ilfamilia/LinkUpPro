@@ -30,19 +30,19 @@ namespace LinkUpPro.Core.Application.Services
                 if (string.IsNullOrWhiteSpace(userId))
                 {
                     return ServiceResult.Failure(OperationStatus.Unauthorized,
-                        "El usuario no está autenticado");
+                        "El usuario no está autenticado.");
                 }
 
                 if (postId <= 0)
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "El ID de la publicación es inválido");
+                        "El ID de la publicación es inválido.");
                 }
 
                 if (reactionType is not ReactionType.Like and not ReactionType.Dislike)
                 {
                     return ServiceResult.Failure(OperationStatus.ValidationError,
-                        "El tipo de reacción es inválido");
+                        "El tipo de reacción es inválido.");
                 }
 
                 var postResult = await _postService.GetVisiblePostByIdAsync(postId, userId);
@@ -55,7 +55,7 @@ namespace LinkUpPro.Core.Application.Services
                 if (postResult.Data == null)
                 {
                     return ServiceResult.Failure(OperationStatus.NotFound,
-                        "La publicación no está disponible");
+                        "La publicación no está disponible.");
                 }
 
                 Reaction? reaction = await _reactionRepository.GetByIdAsync(userId, postId);
@@ -66,7 +66,7 @@ namespace LinkUpPro.Core.Application.Services
                     bool deleted = await _reactionRepository.DeleteAsync(userId, postId);
                     return deleted ? ServiceResult.Success()
                         : ServiceResult.Failure(OperationStatus.Conflict,
-                            "No se pudo eliminar la reacción");
+                            "No se pudo eliminar la reacción.");
                 }
 
                 bool isChange = reaction != null;
@@ -99,7 +99,7 @@ namespace LinkUpPro.Core.Application.Services
                             await _transactionManager.RollbackAsync();
                             transactionOpen = false;
                             return ServiceResult.Failure(OperationStatus.Conflict,
-                                "No se pudo actualizar la reacción");
+                                "No se pudo actualizar la reacción.");
                         }
                     }
 

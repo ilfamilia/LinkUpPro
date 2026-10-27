@@ -5,7 +5,7 @@ namespace LinkUpPro.Core.Application.ViewModels.Post
 {
     public class PostFilterViewModel
     {
-        [StringLength(1000, ErrorMessage = "El texto de búsqueda no puede superar los 1000 caracteres")]
+        [StringLength(1000, ErrorMessage = "El texto de búsqueda no puede superar los 1000 caracteres.")]
         public string? SearchText { get; set; }
 
         [EnumDataType(typeof(PostMediaType))]
