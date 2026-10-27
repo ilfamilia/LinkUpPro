@@ -23,6 +23,13 @@
     {
         <div class="alert alert-success" role="status">@message</div>
     }
+    @if (TempData["PostSuccess"] is string postMessage)
+    {
+        <div class="alert alert-success d-flex align-items-center gap-2" role="status">
+            <span aria-hidden="true">✓</span>
+            <span>@postMessage</span>
+        </div>
+    }
 
     <header class="home-page__heading mb-4">
         <h1 class="mb-1">Mis publicaciones</h1>
@@ -183,7 +190,9 @@
 
                         <section class="post-card__comments" id="comments-@post.Id" aria-label="Comentarios de la publicación">
                             <h4 class="h6 mb-3">Comentarios (@post.CommentsCount)</h4>
-                            @{ ViewData["CommentsEnabled"] = post.AllowComments; }
+                            @{
+                                ViewData["CommentsEnabled"] = post.AllowComments;
+                            }
                             @if (post.Comments.Count > 0)
                             {
                                 @foreach (var comment in post.Comments)

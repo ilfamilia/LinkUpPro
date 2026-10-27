@@ -100,6 +100,7 @@ namespace LinkUpPro.Controllers
             switch (result.Status)
             {
                 case OperationStatus.Success:
+                    TempData["PostSuccess"] = "La publicación fue creada correctamente.";
                     return RedirectToAction("Index", "Home");
 
                 case OperationStatus.Failed:
@@ -252,6 +253,7 @@ namespace LinkUpPro.Controllers
                         FileManager.DeleteFile(previousImagePath);
                     }
 
+                    TempData["PostSuccess"] = "La publicación fue actualizada correctamente.";
                     return RedirectToAction("Index", "Home");
 
                 case OperationStatus.Failed:
@@ -351,6 +353,7 @@ namespace LinkUpPro.Controllers
             switch (result.Status)
             {
                 case OperationStatus.Success:
+                    TempData["PostSuccess"] = "La publicación fue eliminada correctamente.";
                     return RedirectToAction("Index", "Home");
 
                 case OperationStatus.NotFound:
@@ -377,16 +380,7 @@ namespace LinkUpPro.Controllers
                     break;
             }
 
-            var postResult = await _postService.GetMyPostByIdAsync(vm.Id, user.Id);
-
-            if (!postResult.IsSuccess || postResult.Data == null)
-            {
-                return Problem("No se pudo cargar la publicación.");
-            }
-
-            PostViewModel postVm = _mapper.Map<PostViewModel>(postResult.Data);
-
-            return View(postVm);
+            return View(vm);
         }
 
         private async Task<IActionResult> ReturnHomeAsync(CreatePostViewModel vm, AppUser user)
